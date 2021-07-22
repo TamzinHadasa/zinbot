@@ -1,10 +1,11 @@
 # CUSTOM
 config.py
 apicache-py3/
-scrap.md
+scrap.*
 testing.ipynb
 pywikibot.lwp
 throttle.ctrl
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
