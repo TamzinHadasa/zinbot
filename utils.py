@@ -2,6 +2,7 @@
 from json.decoder import JSONDecodeError
 from typing import Callable, Literal
 
+import pywikibot as pwb
 import requests
 from requests_oauthlib import OAuth1Session
 
@@ -14,8 +15,8 @@ class APIError(Exception):
     def __init__(self, msg, event=""):
         super().__init__(msg)
         if event:
-            with open("APIError.json", "w") as f:
-                f.write(str(log))
+            with open("APIError.json", 'w') as f:
+                f.write(str(log_onwiki))
 
 
 class ZBError(Exception):
@@ -33,19 +34,19 @@ def api(func: Callable, *args, **kwargs):
     """Error handling and JSON conversion for API functions
 
     Args:
-      func: A `requests` function that interacts with the API.
-      *args: Positional arguments to pass to `func`.
-      **kwargs: Keyword arguments to pass to `func`.
+      func:  A `requests` function that interacts with the API.
+      *args:  Positional arguments to pass to `func`.
+      **kwargs:  Keyword arguments to pass to `func`.
 
     Returns:
       A dictionary matching the JSON structure of the relevant API
       Response.
 
     Raises:
-      APIError from HTTPError: Issue connecting with API.
-      APIError from JSONDecode: API Response output was not decodable
+      APIError from HTTPError:  Issue connecting with API.
+      APIError from JSONDecode:  API Response output was not decodable
         JSON.
-      APIError (native): API Response included an `error` field.
+      APIError (native):  API Response included an `error` field.
     """
     try:
         response: requests.Response = func(*args, **kwargs)
@@ -56,7 +57,7 @@ def api(func: Callable, *args, **kwargs):
     except JSONDecodeError as e:
         raise APIError("No JSON found.", response.content) from e
     if "error" in response:
-        raise APIError("`error` field in response.", response)
+        raise APIError("'error' field in response.", response)
     return response
 
 
@@ -66,7 +67,7 @@ def get(params: dict) -> dict:
     Automatically specifies output in JSON.
 
     Arg:
-      params: Params to supplement/override the default ones.
+      params:  Params to supplement/override the default ones.
 
     Returns / Raises:
       A dict.  See documentation for api().
@@ -90,8 +91,8 @@ def post(params: dict) -> dict:
     """
     return api(session.post,
                API_URL,
-               params={"format": "json", **params},
-               data={"token": get_token()})
+               params={'format': 'json', **params},
+               data={'token': get_token()})
 
 
 TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
@@ -103,7 +104,7 @@ def get_token(type_: TokenType = "csrf") -> dict:
     R"""Request a token (CSRF by default) from the MediaWiki API
 
     Args:
-      type_: A type of token, among the literals defined by TokenTypes.
+      type_:  A type of token, among the literals defined by TokenTypes.
         Defaults to 'csrf', which is also what the API defaults to if
         none is specified.
 
@@ -111,14 +112,14 @@ def get_token(type_: TokenType = "csrf") -> dict:
       A string matching a validly-formatted token of the specified type.
 
     Raises:
-      APIError from KeyError: If the query response has no token field.
-      ZBError: If the token field is "empty" (just "+\\")
+      APIError from KeyError:  If the query response has no token field.
+      ZBError:  If the token field is "empty" (just "+\\")
     """
-    query = get({"action": "query",
-                 "meta": "tokens",
-                 "type": type_})
+    query = get({'action': 'query',
+                 'meta': 'tokens',
+                 'type': type_})
     try:
-        token = query["query"]["tokens"][type_+"token"]
+        token = query['query']['tokens'][type_+'token']
     except KeyError as e:
         raise APIError("No token obtained.", query) from e
     if token == R"+\\":
@@ -126,18 +127,27 @@ def get_token(type_: TokenType = "csrf") -> dict:
     return token
 
 
-def log(event: str, title: str, prefix: str = "User:'zinbot/logs/"):
+def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/"):
     """Log an event to a page on-wiki.
 
     Defaults to a subpage of `User:'zinbot/logs/`.
 
     Args:
-      event: A string, to be appended to the page in question.
-      title: A string, which when appended to `prefix` forms a page's
+      event:  A string, to be appended to the page in question.
+      title:  A string, which when appended to `prefix` forms a page's
         full title on-wiki.
-      prefix: A string to go before `title`.  To be specified if the log
-      will not be in the normal place.
+      prefix:  A string to go before `title`.  To be specified if the
+        log will not be in the normal place.
     """
-    post({"action": "edit",
-          "title": prefix+title,
-          "appendtext": event})
+    post({'action': 'edit',
+          'title': prefix+title,
+          'appendtext': event})
+
+
+def log_local(page: pwb.Page, logfile: str):
+    """Append a page's title and URL to a document in folder logs/"""
+    with open(f"logs/{logfile}", 'a') as f:
+        f.write(
+            page.title()
+            + f" <https://test.wikipedia.org/wiki/{page.title(as_url=True)}>\n"
+        )
