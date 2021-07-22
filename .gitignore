@@ -1,5 +1,6 @@
 # CUSTOM
 .vscode/
+.pylintrc
 config.py
 apicache-py3/
 misc/
