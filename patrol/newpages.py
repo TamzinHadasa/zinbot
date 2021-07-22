@@ -4,7 +4,7 @@ from typing import Literal
 import pywikibot as pwb
 
 from utils import ZBError, get, post, log_local
-from patrol.rfd import checkRfD
+from patrol.rfd import check_rfd
 
 
 # Setting `start` to 0 throws an error with the API.
@@ -45,7 +45,7 @@ def checkqueue():
     while True:
         for page in queue:
             page = pwb.Page(pwb.Site(), title=page['title'])
-            if checkRfD(page):
+            if check_rfd(page):
                 print(f"MATCH on {page=}")
                 patrol(page)
             else:

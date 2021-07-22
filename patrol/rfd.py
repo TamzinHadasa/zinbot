@@ -11,6 +11,7 @@ import re
 
 import mwparserfromhell as parser
 import pywikibot as pwb
+from pywikibot import Page, Site
 
 from utils import log_onwiki, log_local
 
@@ -18,10 +19,10 @@ from utils import log_onwiki, log_local
 # some reason someone manually added the subst'd output and changed with
 # the spacing, it would not read as a match.  This can be changed if
 # there's anyone out there actually doing that.
-# Note that this does not have a full check of wikilink validity, since
-# an invalidly-formulated link could potentially land at RfD (although
-# it would probably be speedily resolved).
-GOOD = re.compile(r"""\{\{<includeonly>safesubst:<\/includeonly>\#invoke:RfD\|\|\|month = \w+
+# Note that this does check of wikilink validity, since an invalidly-
+# formulated link could still potentially land at RfD (although it would
+# probably be speedily resolved).
+TAGGED = re.compile(r"""\{\{<includeonly>safesubst:<\/includeonly>\#invoke:RfD\|\|\|month = \w+
 \|day = \d{1,2}
 \|year = \d{4}
 \|time = \d{2}:\d{2}
@@ -31,32 +32,79 @@ GOOD = re.compile(r"""\{\{<includeonly>safesubst:<\/includeonly>\#invoke:RfD\|\|
 \#[Rr][Ee][Dd][Ii][Rr][Ee][Cc][Tt] *\[\[.+?\]\]""")
 
 
-def checkRfD(page: pwb.Page) -> bool:
-    if not GOOD.match(page.text):
-        return False
-    # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
+def check_rfd(page: Page) -> bool:
+    """Check if a page is subject to an ongoing RfD
+
+    First checks for the {{subst:rfd}} tag, then for whether there's an
+    entry at the corresponding RfD log page.
+
+    Arg:
+      page:  A Page corresponding to a wikipage to be checked.
+
+    Returns:
+      A bool, True if both TAGGED matches and checkfiled() returns True.
+      (If the former but not the latter, the distinction is made clear
+      by logs.)
+    """
+    return TAGGED.match(page.text) and checkfiled(page)
+
+
+def checkfiled(page: Page) -> bool:
+    """Check an RfD log page for an anchor matching the page's title.
+
+    {{subst:rfd2}} makes such anchors automatically.  As with TAGGED, no
+    guarantee of matching markup that renders the same way but is
+    generated through some other means.
+
+    Arg:
+      page:  A Page corresponding to a wikipage tagged with
+        {{subst:rfd}}.
+
+    Returns:
+      A bool indicating whether an RfD entry exists matching the page's
+      title.
+    """
+    rfd = find_rfd(page)
+    # What idiot made this line necessary by building quotation-mark
+    # escaping into {{rfd2}}?  Oh right.  Me.
+    escaped = page.title().replace('"', "&quot;")
+    filed = f'*<span id="{escaped}">' in rfd.text
+    if not filed:
+        log_local(page, "unfiledRfDs.txt")
+        edited: pwb.Timestamp = page.editTime()  # Subclass of dt.datetime
+        now = Site().server_time()
+        if now - edited > dt.timedelta(minutes=30):
+            log_onwiki(event=(f"* {page.title(as_link=True)} not filed to "
+                              f"{rfd.title(as_link=True)} as of {now}\n"),
+                       title="Unfiled RfDs")
+    return filed
+
+
+def find_rfd(page: Page) -> Page:
+    """Get the RfD log page referenced by an {{rfd}} substitution.
+
+    Uses the standard RfD log format and the `year`, `month`, and `day`
+    parameters in {{subst:rfd}}.  This accounts for RfDs filed to
+    previous dates.  Won't throw an error if no log page exists, since
+    PWB will just create an empty Page with .text attribute "".
+
+    Arg:
+      page:  A Page corresponding to a wikipage tagged with
+        {{subst:rfd}}.
+
+    Returns:
+      A Page corresponding to the RfD log page.
+    """
     parsed = parser.parse(page.text)
+    # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
     parsed.replace("<includeonly>safesubst:</includeonly>#invoke:RfD",
                    "fake template")
     template = parsed.filter_templates()[0]
     year, month, day = (template.get(s).value.strip()
                         for s in ("year", "month", "day"))
-    rfd = pwb.Page(
-        pwb.Site(),
+    rfd = Page(
+        Site(),
         title=f"Redirects for discussion/Log/{year} {month} {day}",
-        ns=4  # Project:
+        ns=4  # `Project:`
     )
-    filed = f'*<span id="{page.title()}">' in rfd.text
-    if not filed:
-        handle_unfiled(page, rfd)
-    return filed
-
-
-def handle_unfiled(page: pwb.Page, rfd: pwb.Page):
-    log_local(page, "unfiledRfDs.txt")
-    edited: pwb.Timestamp = page.editTime()  # Subclass of dt.datetime
-    now = pwb.Site().server_time()
-    # if now - edited > dt.timedelta(minutes=30):
-        # log_onwiki(event=(f"* {page.title(as_link=True)} not filed to "
-        #                   f"{rfd.title(as_link=True)} as of {now}\n"),
-        #            title="Unfiled RfDs")
+    return rfd
