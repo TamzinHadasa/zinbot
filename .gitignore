@@ -1,7 +1,7 @@
 # CUSTOM
 config.py
 apicache-py3/
-scrap.*
+misc/
 testing.ipynb
 pywikibot.lwp
 throttle.ctrl
