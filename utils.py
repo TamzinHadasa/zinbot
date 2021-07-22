@@ -6,14 +6,15 @@ import pywikibot as pwb
 import requests
 from requests_oauthlib import OAuth1Session
 
-from config import tamzin
+from config import bot
 
 
 API_URL = "https://test.wikipedia.org/w/api.php?"
-session = OAuth1Session(tamzin.c_key,
-                        client_secret=tamzin.c_secret,
-                        resource_owner_key=tamzin.a_key,
-                        resource_owner_secret=tamzin.a_secret)
+# Signs all API requests with the bot's OAuth data
+session = OAuth1Session(bot.c_key,
+                        client_secret=bot.c_secret,
+                        resource_owner_key=bot.a_key,
+                        resource_owner_secret=bot.a_secret)
 TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
                     'patrol', 'rollback', 'setglobalaccountstatus',
                     'userrights', 'watch']
@@ -49,19 +50,22 @@ def api(func: Callable, *args, **kwargs):
       APIError from HTTPError:  Issue connecting with API.
       APIError from JSONDecode:  API Response output was not decodable
         JSON.
-      APIError (native):  API Response included an `error` field.
+      APIError (native):  API Response included a status > 400 or an
+        `error` field in its JSON.
     """
     try:
         response: requests.Response = func(*args, **kwargs)
     except requests.HTTPError as e:
         raise APIError from e
+    if not response: # status code > 400
+        raise APIError(f"{response.status_code=}", response.content)
     try:
-        response: dict = response.json()
+        data: dict = response.json()
     except JSONDecodeError as e:
         raise APIError("No JSON found.", response.content) from e
-    if "error" in response:
+    if 'error' in data:
         raise APIError("'error' field in response.", response)
-    return response
+    return data
 
 
 def get(params: dict) -> dict:

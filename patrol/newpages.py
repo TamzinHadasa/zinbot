@@ -41,7 +41,10 @@ def checkqueue():
     Uses buildqueue(), set to 'showdeleted' mode.
     """
     queue = buildqueue(['showdeleted'])
-    # TODO failsafe against infinite loop to avoid API lockout
+    # The practical limit on this is that, if there's some unforeseen
+    # situation that can cause an infinite loop, the resulting HTTP 429
+    # response would halt the bot as specifically provided for in
+    # utils.api().
     while True:
         for page in queue:
             page = pwb.Page(pwb.Site(), title=page['title'])
