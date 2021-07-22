@@ -1,4 +1,5 @@
 # CUSTOM
+.vscode/
 config.py
 apicache-py3/
 misc/
