@@ -9,6 +9,16 @@ from requests_oauthlib import OAuth1Session
 from config import tamzin
 
 
+API_URL = "https://test.wikipedia.org/w/api.php?"
+session = OAuth1Session(tamzin.c_key,
+                        client_secret=tamzin.c_secret,
+                        resource_owner_key=tamzin.a_key,
+                        resource_owner_secret=tamzin.a_secret)
+TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
+                    'patrol', 'rollback', 'setglobalaccountstatus',
+                    'userrights', 'watch']
+
+
 class APIError(Exception):
     """Exception raised by issues in dealing with the MediaWiki API"""
 
@@ -21,13 +31,6 @@ class APIError(Exception):
 
 class ZBError(Exception):
     """Generic exception for errors specific to 'zinbot's behavior"""
-
-
-API_URL = "https://test.wikipedia.org/w/api.php?"
-session = OAuth1Session(tamzin.c_key,
-                        client_secret=tamzin.c_secret,
-                        resource_owner_key=tamzin.a_key,
-                        resource_owner_secret=tamzin.a_secret)
 
 
 def api(func: Callable, *args, **kwargs):
@@ -83,6 +86,9 @@ def post(params: dict) -> dict:
     Automatically specifies output in JSON, and sets the request's body
     (a CSRF token) through a get_token() call.
 
+    Since Response error handling is internal (through api()), in most
+    cases it will not be necessary to access the returned dict.
+
     Arg:
       params: Params to supplement/override the default ones.
 
@@ -93,11 +99,6 @@ def post(params: dict) -> dict:
                API_URL,
                params={'format': 'json', **params},
                data={'token': get_token()})
-
-
-TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
-                    'patrol', 'rollback', 'setglobalaccountstatus',
-                    'userrights', 'watch']
 
 
 def get_token(type_: TokenType = "csrf") -> dict:
