@@ -25,8 +25,8 @@ class APIError(Exception):
     def __init__(self, msg, event=""):
         super().__init__(msg)
         if event:
-            with open("APIError.json", 'w') as f:
-                f.write(str(log_onwiki))
+            with open("logs/APIError.json", 'w') as f:
+                f.write(str(event))
 
 
 class ZBError(Exception):
@@ -128,7 +128,8 @@ def get_token(type_: TokenType = "csrf") -> dict:
     return token
 
 
-def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/"):
+def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/",
+               summary: str = "Updating logs"):
     """Log an event to a page on-wiki.
 
     Defaults to a subpage of `User:'zinbot/logs/`.
@@ -139,10 +140,12 @@ def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/"):
         full title on-wiki.
       prefix:  A string to go before `title`.  To be specified if the
         log will not be in the normal place.
+      summary:  A custom edit summary to use.
     """
     post({'action': 'edit',
           'title': prefix+title,
-          'appendtext': event})
+          'appendtext': event,
+          'summary': summary})
 
 
 def log_local(page: pwb.Page, logfile: str):

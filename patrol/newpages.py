@@ -74,8 +74,9 @@ def patrol(page: pwb.Page):
     Arg:
       page:  A pwb.Page representing a wikipage to patrol.
     """
-    # post({'action': 'pagetriageaction',
-    #       'pageid': page.pageid,
-    #       'reviewed': 1,
-    #       'skipnotif': 1})  # For now
+    post({'action': 'pagetriageaction',
+          'pageid': page.pageid,
+          'reviewed': 1,
+          'skipnotif': 1})  # For now
+    print(f"Patrolled {page.title()}")
     log_local(page, "patrolledpages.txt")
