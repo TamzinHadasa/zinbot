@@ -1,13 +1,14 @@
 # CUSTOM
 .vscode/
+apicache-py3/
+logs/
+misc/
 .pylintrc
 config.py
-apicache-py3/
-misc/
-testing.ipynb
 pywikibot.lwp
 throttle.ctrl
-logs/
+
+# Rest copied from <https://github.com/github/gitignore/blob/master/Python.gitignore>
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
