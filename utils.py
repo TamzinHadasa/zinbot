@@ -155,7 +155,16 @@ def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/",
 
 
 def log_local(page: Page, logfile: str):
-    """Append a page's title and URL to a document in folder logs/"""
+    """Append a page's title and URL to a document in folder `logs/`.
+    
+    Args:
+      page:  A Page whose title should be logged.
+      logfile:  A file (extant or not) in folder `logs/`.
+    """
+    # NOTE: For now takes full Page as object because there's no reason to
+    # duplicate calling .title() within each call.  If used in cases where
+    # no Page is involved, `page` could be expanded to take Page|str, only
+    # calling .title() in the former case.
     with open(f"logs/{logfile}", 'a') as f:
         f.write(
             page.title()
