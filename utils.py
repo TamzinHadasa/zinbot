@@ -1,4 +1,4 @@
-"""Utility functions for various tasks of 'zinbot"""
+"""Utility functions for various tasks of 'zinbot."""
 from json.decoder import JSONDecodeError
 from typing import Callable, Literal
 
@@ -21,7 +21,7 @@ TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
 
 
 class APIError(Exception):
-    """Exception raised by issues in dealing with the MediaWiki API"""
+    """Exception raised by issues in dealing with the MediaWiki API."""
 
     def __init__(self, msg, event=""):
         super().__init__(msg)
@@ -31,11 +31,11 @@ class APIError(Exception):
 
 
 class ZBError(Exception):
-    """Generic exception for errors specific to 'zinbot's behavior"""
+    """Generic exception for errors specific to 'zinbot's behavior."""
 
 
 def api(func: Callable, *args, **kwargs):
-    """Error handling and JSON conversion for API functions
+    """Error handling and JSON conversion for API functions.
 
     Args:
       func:  A `requests` function that interacts with the API.
@@ -47,7 +47,7 @@ def api(func: Callable, *args, **kwargs):
       Response.
 
     Raises:
-      APIError from HTTPError:  Issue connecting with API.
+      ZBError from HTTPError:  Issue connecting with API.
       APIError from JSONDecode:  API Response output was not decodable
         JSON.
       APIError (native):  API Response included a status > 400 or an
@@ -56,7 +56,7 @@ def api(func: Callable, *args, **kwargs):
     try:
         response: Response = func(*args, **kwargs)
     except HTTPError as e:
-        raise APIError from e
+        raise ZBError from e
     if not response:  # status code > 400
         raise APIError(f"{response.status_code=}", response.content)
     try:
@@ -69,7 +69,7 @@ def api(func: Callable, *args, **kwargs):
 
 
 def get(params: dict) -> dict:
-    """Send GET request within the OAuth-signed session
+    """Send GET request within the OAuth-signed session.
 
     Automatically specifies output in JSON.
 
@@ -77,7 +77,7 @@ def get(params: dict) -> dict:
       params:  Params to supplement/override the default ones.
 
     Returns / Raises:
-      A dict.  See documentation for api().
+      See api() documentation.
     """
     return api(session.get,
                API_URL,
@@ -85,7 +85,7 @@ def get(params: dict) -> dict:
 
 
 def post(params: dict, tokentype: TokenType = 'csrf') -> dict:
-    """Send POST request within the OAuth-signed session
+    """Send POST request within the OAuth-signed session.
 
     Automatically specifies output in JSON, and sets the request's body
     (a CSRF token) through a get_token() call.
@@ -96,10 +96,10 @@ def post(params: dict, tokentype: TokenType = 'csrf') -> dict:
     Args:
       params:  Params to supplement/override the default ones.
       tokentype:  A TokenType to pass to get_token().  Defaults to
-      'csrf', which is also what get_token() and the API default to.
+        'csrf' like get_token() and the MW API.
 
     Returns / Raises:
-      A dict.  See documentation for api().
+      See api() documentation.
     """
     return api(session.post,
                API_URL,
@@ -107,13 +107,12 @@ def post(params: dict, tokentype: TokenType = 'csrf') -> dict:
                data={'token': get_token(tokentype)})
 
 
-def get_token(type_: TokenType = "csrf") -> dict:
-    R"""Request a token (CSRF by default) from the MediaWiki API
+def get_token(tokentype: TokenType = "csrf") -> dict:
+    R"""Request a token (CSRF by default) from the MediaWiki API.
 
     Args:
-      type_:  A type of token, among the literals defined by TokenTypes.
-        Defaults to 'csrf', which is also what the API defaults to if
-        none is specified.
+      tokentype:  A type of token, among the literals defined by
+        TokenType.  Defaults to 'csrf' like the MW API.
 
     Returns:
       A string matching a validly-formatted token of the specified type.
@@ -124,9 +123,9 @@ def get_token(type_: TokenType = "csrf") -> dict:
     """
     query = get({'action': 'query',
                  'meta': 'tokens',
-                 'type': type_})
+                 'type': tokentype})
     try:
-        token = query['query']['tokens'][type_+'token']
+        token = query['query']['tokens'][tokentype+'token']
     except KeyError as e:
         raise APIError("No token obtained.", query) from e
     if token == R"+\\":
@@ -134,7 +133,7 @@ def get_token(type_: TokenType = "csrf") -> dict:
     return token
 
 
-def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/",
+def log_onwiki(event: str, logpage: str, prefix: str = "User:'zinbot/logs/",
                summary: str = "Updating logs"):
     """Log an event to a page on-wiki.
 
@@ -142,29 +141,29 @@ def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/",
 
     Args:
       event:  A string, to be appended to the page in question.
-      title:  A string, which when appended to `prefix` forms a page's
+      logpage:  A string, which when appended to `prefix` forms a page's
         full title on-wiki.
       prefix:  A string to go before `title`.  To be specified if the
         log will not be in the normal place.
       summary:  A custom edit summary to use.
     """
     post({'action': 'edit',
-          'title': prefix+title,
+          'title': prefix+logpage,
           'appendtext': event,
           'summary': summary})
 
 
 def log_local(page: Page, logfile: str):
     """Append a page's title and URL to a document in folder `logs/`.
-    
+
     Args:
       page:  A Page whose title should be logged.
       logfile:  A file (extant or not) in folder `logs/`.
     """
-    # NOTE: For now takes full Page as object because there's no reason to
-    # duplicate calling .title() within each call.  If used in cases where
-    # no Page is involved, `page` could be expanded to take Page|str, only
-    # calling .title() in the former case.
+    # NOTE: For now takes full Page as object because there's no reason
+    # to duplicate calling .title() within each call.  If used in cases
+    # where no Page is involved, `page` could be expanded to take
+    # Page|str, only calling .title() in the former case.
     with open(f"logs/{logfile}", 'a') as f:
         f.write(
             page.title()

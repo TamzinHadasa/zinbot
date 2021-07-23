@@ -1,4 +1,4 @@
-"""Functions for detecting and patrolling RfD'd pages
+"""Functions for detecting and patrolling RfD'd pages.
 
 When a redirect is nominated for discussion at RfD, it is placed in the
 articles queue of Special:NewPagesFeed.  These functions identify such
@@ -32,7 +32,7 @@ TAGGED = re.compile(r"""\{\{<includeonly>safesubst:<\/includeonly>\#invoke:RfD\|
 
 
 def check_rfd(page: Page) -> bool:
-    """Check if a page is subject to an ongoing RfD
+    """Check if a page is subject to an ongoing RfD.
 
     First checks for the {{subst:rfd}} tag, then for whether there's an
     entry at the corresponding RfD log page.

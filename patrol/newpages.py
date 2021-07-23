@@ -1,4 +1,4 @@
-"""Functions for interacting with the NewPagesFeed"""
+"""Functions for interacting with the NewPagesFeed."""
 from typing import Literal
 
 from pywikibot import Page, Site
@@ -36,7 +36,7 @@ def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
 
 
 def checkqueue():
-    """Loop through NewPagesFeed, 200 items at a time
+    """Loop through NewPagesFeed, 200 items at a time.
 
     Uses buildqueue(), set to 'showdeleted' mode.
     """
