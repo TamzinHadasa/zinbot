@@ -10,8 +10,7 @@ import datetime as dt
 import re
 
 from mwparserfromhell import parse
-import pywikibot as pwb
-from pywikibot import Page, Site
+from pywikibot import Page, Site, Timestamp
 
 from utils import log_onwiki, log_local
 
@@ -83,7 +82,7 @@ def checkfiled(page: Page) -> bool:
     if not filed:
         print(f"RfD not filed for {page.title()}.")
         log_local(page, "unfiledRfDs.txt")
-        edited: pwb.Timestamp = page.editTime()  # Subclass of dt.datetime
+        edited: Timestamp = page.editTime()  # Subclass of dt.datetime
         if now - edited > dt.timedelta(minutes=30):
             log_onwiki(
                 event=(f"\n* {page.title(as_link=True)} not filed to "

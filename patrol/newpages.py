@@ -1,7 +1,7 @@
 """Functions for interacting with the NewPagesFeed"""
 from typing import Literal
 
-import pywikibot as pwb
+from pywikibot import Page, Site
 
 from utils import ZBError, get, post, log_local
 from patrol.rfd import check_rfd
@@ -29,7 +29,7 @@ def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
                  'namespace': 0,  # Main
                  'showunreviewed': 1,
                  'dir': 'oldestreview',
-                 'limit': 200,  # NOTE move to constant if reference elsewhere
+                 'limit': 200,  # NOTE move to constant if referenced elsewhere
                  'date_range_from': start}
                 | {i: 1 for i in show})
     return queue['pagetriagelist']['pages']
@@ -47,7 +47,7 @@ def checkqueue():
     # utils.api().
     while True:
         for page in queue:
-            page = pwb.Page(pwb.Site(), title=page['title'])
+            page = Page(Site(), title=page['title'])
             if check_rfd(page):
                 print(f"MATCH on {page=}")
                 patrol(page)
@@ -71,11 +71,11 @@ def checkqueue():
     print("Queue complete")
 
 
-def patrol(page: pwb.Page):
+def patrol(page: Page):
     """Patrol a page using PageTriage.
 
     Arg:
-      page:  A pwb.Page representing a wikipage to patrol.
+      page:  A Page representing a wikipage to patrol.
     """
     post({'action': 'pagetriageaction',
           'pageid': page.pageid,

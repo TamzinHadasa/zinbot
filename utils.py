@@ -2,8 +2,8 @@
 from json.decoder import JSONDecodeError
 from typing import Callable, Literal
 
-import pywikibot as pwb
-import requests
+from pywikibot import Page
+from requests import Response, HTTPError
 from requests_oauthlib import OAuth1Session
 
 from config import bot
@@ -54,10 +54,10 @@ def api(func: Callable, *args, **kwargs):
         `error` field in its JSON.
     """
     try:
-        response: requests.Response = func(*args, **kwargs)
-    except requests.HTTPError as e:
+        response: Response = func(*args, **kwargs)
+    except HTTPError as e:
         raise APIError from e
-    if not response: # status code > 400
+    if not response:  # status code > 400
         raise APIError(f"{response.status_code=}", response.content)
     try:
         data: dict = response.json()
@@ -84,7 +84,7 @@ def get(params: dict) -> dict:
                params={"format": "json", **params})
 
 
-def post(params: dict) -> dict:
+def post(params: dict, tokentype: TokenType = 'csrf') -> dict:
     """Send POST request within the OAuth-signed session
 
     Automatically specifies output in JSON, and sets the request's body
@@ -93,8 +93,10 @@ def post(params: dict) -> dict:
     Since Response error handling is internal (through api()), in most
     cases it will not be necessary to access the returned dict.
 
-    Arg:
-      params: Params to supplement/override the default ones.
+    Args:
+      params:  Params to supplement/override the default ones.
+      tokentype:  A TokenType to pass to get_token().  Defaults to
+      'csrf', which is also what get_token() and the API default to.
 
     Returns / Raises:
       A dict.  See documentation for api().
@@ -102,7 +104,7 @@ def post(params: dict) -> dict:
     return api(session.post,
                API_URL,
                params={'format': 'json', **params},
-               data={'token': get_token()})
+               data={'token': get_token(tokentype)})
 
 
 def get_token(type_: TokenType = "csrf") -> dict:
@@ -152,7 +154,7 @@ def log_onwiki(event: str, title: str, prefix: str = "User:'zinbot/logs/",
           'summary': summary})
 
 
-def log_local(page: pwb.Page, logfile: str):
+def log_local(page: Page, logfile: str):
     """Append a page's title and URL to a document in folder logs/"""
     with open(f"logs/{logfile}", 'a') as f:
         f.write(
