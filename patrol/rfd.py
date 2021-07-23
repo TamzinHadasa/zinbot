@@ -9,7 +9,7 @@ logged as such on-wiki.
 import datetime as dt
 import re
 
-from mwparserfromhell import parse
+import mwparserfromhell as mwph
 from pywikibot import Page, Site, Timestamp
 
 from utils import log_onwiki, log_local
@@ -109,7 +109,7 @@ def find_rfd(page: Page) -> Page:
       A Page corresponding to the RfD log page.  To check whether the
       page actually exists, use .exists().
     """
-    parsed = parse(page.text)
+    parsed = mwph.parse(page.text)
     # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
     parsed.replace("<includeonly>safesubst:</includeonly>#invoke:RfD",
                    "fake template")
