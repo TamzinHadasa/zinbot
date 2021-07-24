@@ -1,9 +1,9 @@
 """Functions for interacting with the NewPagesFeed."""
 from typing import Literal
 
-from pywikibot import Page, Site
+from pywikibot import Page
 
-from utils import ZBError, get, post, log_local
+from utils import ZBError, zb, log_local
 from patrol.rfd import check_rfd
 
 
@@ -18,20 +18,21 @@ def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
         in the queue's parameters.  (N.B.:  'showdeleted' means
         "nominated for deletion", not "deleted".)  Setting none of these
         is the same as setting all of them.
-      start:  A timestamp to start at, in standard MediaWiki format
-        (YYYYMMDDHHMMSS).
+      start:  A timestamp to start at, in a format accepted by the MW
+        API.
 
     Returns:
       A list of dicts, potentially empty, based on on the 'pages' field
       of the JSON returned by the API.
     """
-    queue = get({'action': 'pagetriagelist',
-                 'namespace': 0,  # Main
-                 'showunreviewed': 1,
-                 'dir': 'oldestreview',
-                 'limit': 200,  # NOTE move to constant if referenced elsewhere
-                 'date_range_from': start}
-                | {i: 1 for i in show})
+    queue = zb.get({'action': 'pagetriagelist',
+                    'namespace': 0,  # Main
+                    'showunreviewed': 1,
+                    'dir': 'oldestreview',
+                    # NOTE: Move to constant if referenced elsewhere.
+                    'limit': 200,
+                    'date_range_from': start}
+                   | {i: 1 for i in show})
     return queue['pagetriagelist']['pages']
 
 
@@ -47,7 +48,7 @@ def checkqueue():
     # utils.api().
     while True:
         for page in queue:
-            page = Page(Site(), title=page['title'])
+            page = zb.getpage(page['title'])
             if check_rfd(page):
                 print(f"MATCH on {page=}")
                 patrol(page)
@@ -77,9 +78,9 @@ def patrol(page: Page):
     Arg:
       page:  A Page representing a wikipage to patrol.
     """
-    post({'action': 'pagetriageaction',
-          'pageid': page.pageid,
-          'reviewed': 1,
-          'skipnotif': 1})  # For now
+    zb.post({'action': 'pagetriageaction',
+             'pageid': page.pageid,
+             'reviewed': 1,
+             'skipnotif': 1})  # May change based on community's feelings.
     print(f"Patrolled {page.title()}")
     log_local(page, "patrolledpages.txt")
