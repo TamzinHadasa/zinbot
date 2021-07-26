@@ -1,4 +1,5 @@
 """Functions for interacting with the NewPagesFeed."""
+import time
 from typing import Literal
 
 from pywikibot import Page, Site
@@ -68,6 +69,9 @@ def checkqueue():
         if queue[-1]["pageid"] == newqueue[-1]["pageid"]:
             break
         queue = newqueue
+        # Rate limit.  NOTE: Will have to move somewhere else if tasks
+        # are added that don't run through checkqueue().
+        time.sleep(10)
     print("Queue complete")
 
 
