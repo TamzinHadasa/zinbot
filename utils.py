@@ -1,6 +1,7 @@
 """Utility functions for various tasks of 'zinbot."""
+import json
 from json.decoder import JSONDecodeError
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 from pywikibot import Page, Site
 from requests import Response
@@ -15,11 +16,26 @@ WIKI_URL = "https://test.wikipedia.org/wiki/"
 class APIError(Exception):
     """Exception raised by issues in dealing with the MediaWiki API."""
 
-    def __init__(self, msg, event=""):
+    def __init__(self, msg: str, event: Any = None) -> None:
+        """Saves MW API error content, if any is passed.
+
+        Saves to logs/APIError.json is JSON-serializable,
+        logs/APIError.txt otherwise.
+
+        Args:
+          msg:  A str to pass as Exception's arg.
+          event:  The error content from the MW API, in JSON-
+            serializable format if possible.
+        """
         super().__init__(msg)
         if event:
-            with open("logs/APIError.json", 'w') as f:
-                f.write(str(event))
+            try:
+                with open("logs/APIError.json", 'w') as f:
+                    json.dump(event, f)
+            except TypeError:
+                with open("logs/APIError.txt", 'w') as f:
+                    f.write(str(event))
+
 
 
 class ZBError(Exception):
@@ -27,12 +43,25 @@ class ZBError(Exception):
 
 
 class Bot:
-    """Contains global information for the bot"""
+    """Contains global information for the bot.
+
+    Class attribute:
+      TokenType:  A type alias for the valid values of `token` in an MW
+        API request.
+
+    Instance attributes:
+      session:  An OAuth1Session that signs all API requests with the
+        bot's OAuth data.
+      site:  The value of pywikibot.Site()
+    """
     TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount',
                         'login', 'patrol', 'rollback',
                         'setglobalaccountstatus', 'userrights', 'watch']
 
-    def __init__(self, token):
+    def __init__(self, token: dict[str, str]) -> None:
+        """Initializes Bot object
+
+        """
         # Signs all API requests with the bot's OAuth data.
         self.session = OAuth1Session(token['c_key'],
                                      client_secret=token['c_secret'],
@@ -41,7 +70,12 @@ class Bot:
         # Yes it caches, but still preferable to only call once
         self.site = Site()
 
-    def _api(self, method: str, **kwargs) -> dict:
+    # Could do a whole type implementation of the API's response as
+    # dict[str, Any] or a list thereof, but given that `requests`
+    # doesn't see that as necessary, neither do I.  Instead, type return
+    # of functions that implement.
+    def _api(self, methodname: Literal['get', 'post'],
+             **kwargs: dict[str, str]) -> Any:
         """Error handling and JSON conversion for API functions.
 
         Args:
@@ -60,20 +94,20 @@ class Bot:
           APIError (native):  API Response included a status > 400 or an
             `error` field in its JSON.
         """
-        method: Callable = getattr(self.session, method)
+        method: Callable[..., Response] = getattr(self.session, methodname)
         # Can raise requests.HTTPError
         response: Response = method(API_URL, **kwargs)
         if not response:  # status code > 400
             raise APIError(f"{response.status_code=}", response.content)
         try:
-            data: dict = response.json()
+            data: dict[str, Any] = response.json()
         except JSONDecodeError as e:
             raise APIError("No JSON found.", response.content) from e
         if 'error' in data:
-            raise APIError("'error' field in response.", response)
+            raise APIError("'error' field in response.", response.content)
         return data
 
-    def get(self, params: dict) -> dict:
+    def get(self, params: dict[str, Any]) -> Any:
         """Send GET request within the OAuth-signed session.
 
         Automatically specifies output in JSON (overridable).
@@ -87,7 +121,8 @@ class Bot:
         return self._api('get',
                          params={"format": "json", **params})
 
-    def post(self, params: dict, tokentype: TokenType = 'csrf') -> dict:
+    def post(self, params: dict[str, Any],
+             tokentype: TokenType = 'csrf') -> Any:
         """Send POST request within the OAuth-signed session.
 
         Automatically specifies output in JSON (overridable), and sets
@@ -109,7 +144,7 @@ class Bot:
                          params={'format': 'json', **params},
                          data={'token': self.get_token(tokentype)})
 
-    def get_token(self, tokentype: TokenType = 'csrf') -> dict:
+    def get_token(self, tokentype: TokenType = 'csrf') -> str:
         R"""Request a token (CSRF by default) from the MediaWiki API.
 
         Args:
@@ -123,12 +158,12 @@ class Bot:
         APIError from KeyError:  If the query response has no token field.
         ZBError:  If the token field is "empty" (just "+\\")
         """
-        query = self.get({'action': 'query',
-                          'meta': 'tokens',
-                          'type': tokentype})
+        query: dict[str, Any] = self.get({'action': 'query',
+                                          'meta': 'tokens',
+                                          'type': tokentype})
         try:
             # How MW names all tokens.
-            token = query['query']['tokens'][tokentype+'token']
+            token: str = query['query']['tokens'][tokentype+'token']
         except KeyError as e:
             raise APIError("No token obtained.", query) from e
         if token == R"+\\":
@@ -163,7 +198,7 @@ zb = Bot(bot_token)
 
 
 def log_onwiki(event: str, logpage: str, prefix: str = "User:'zinbot/logs/",
-               summary: str = "Updating logs"):
+               summary: str = "Updating logs") -> None:
     """Log an event to a page on-wiki.
 
     Defaults to a subpage of `User:'zinbot/logs/`.
@@ -182,7 +217,7 @@ def log_onwiki(event: str, logpage: str, prefix: str = "User:'zinbot/logs/",
              'summary': summary})
 
 
-def log_local(page: Page, logfile: str):
+def log_local(page: Page, logfile: str) -> None:
     """Append a page's title and URL to a document in folder `logs/`.
 
     Args:
