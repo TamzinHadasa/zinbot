@@ -8,7 +8,6 @@ logged as such on-wiki.
 """
 import datetime as dt
 import re
-from typing import Tuple
 
 import mwparserfromhell as mwph
 from pywikibot import Page, Timestamp
@@ -47,7 +46,7 @@ def check_rfd(page: Page) -> bool:
       (If the former but not the latter, the distinction is made clear
       by logs.)
     """
-    return TAGGED.match(page.text) and checkfiled(page)
+    return bool(TAGGED.match(page.text)) and checkfiled(page)
 
 
 def checkfiled(page: Page) -> bool:
@@ -66,22 +65,27 @@ def checkfiled(page: Page) -> bool:
       title.
     """
     now = zb.site.server_time()
-    rfd_title, rfd_text = find_rfd(page)
+    rfd_title = find_rfd(page)
     # What idiot made this line necessary by building quotation-mark
     # escaping into {{rfd2}}?  Oh right.  Me.
     escaped = page.title().replace('"', "&quot;")
     try:
-        filed = f'*<span id="{escaped}">' in rfd_text
-    except TypeError:  # `text` is None.
+        rfd_text = zb.getpage(
+            title=rfd_title,
+            ns=4,  # `Project:`
+            must_exist=True
+        ).text
+    except ZBError:  # `text` is None.
         print(f"No RfD page for {page.title()}.")
         log_local(page, "no_rfd_logpage")
         log_onwiki(
             event=(f"\n* {page.title(as_link=True)} not filed to "
-                   f"{rfd_title(as_link=True)} (currently a redlink) as  of {now}"),
+                   f"[[{rfd_title}]] (currently a redlink) as  of {now}"),
             logpage="Unfiled RfDs",
             summary="Logging a page tagged for RfD for a date where no log page exists"
         )
         return False
+    filed = f'*<span id="{escaped}">' in rfd_text
     if not filed:
         print(f"RfD not filed for {page.title()}.")
         log_local(page, "unfiledRfDs.txt")
@@ -89,7 +93,7 @@ def checkfiled(page: Page) -> bool:
         if now - edited > dt.timedelta(minutes=30):
             log_onwiki(
                 event=(f"\n* {page.title(as_link=True)} not filed to "
-                       f"{rfd_title(as_link=True)} as of {now}\n"),
+                       f"[[{rfd_title}]] as of {now}\n"),
                 logpage="Unfiled RfDs",
                 summary=("Logging a page tagged for RfD more than 30 minutes "
                          "ago, where no RfD has been filed")
@@ -97,8 +101,8 @@ def checkfiled(page: Page) -> bool:
     return filed
 
 
-def find_rfd(page: Page) -> Tuple[str, str|None]:
-    """Get the RfD log page referenced by an {{rfd}} substitution.
+def find_rfd(page: Page) -> str:
+    """Get the title of the log page referenced by an RfD tag.
 
     Uses the standard RfD log format and the `year`, `month`, and `day`
     parameters in {{subst:rfd}}.  This accounts for RfDs filed to
@@ -109,10 +113,8 @@ def find_rfd(page: Page) -> Tuple[str, str|None]:
         {{subst:rfd}}.
 
     Returns:
-      A tuple comprising:
-        1.  The title of an RfD page.
-        2.  The page's text (potentially ""), if the page exists.
-            Otherwise None.
+      A str for an RfD log page, although the page does not necessarily
+      exist.
     """
     parsed = mwph.parse(page.text)
     # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
@@ -121,13 +123,4 @@ def find_rfd(page: Page) -> Tuple[str, str|None]:
     template = parsed.filter_templates()[0]
     year, month, day = (template.get(s).value.strip()
                         for s in ("year", "month", "day"))
-    title = f"Redirects for discussion/Log/{year} {month} {day}"
-    try:
-        text = zb.getpage(
-            title=title,
-            ns=4,  # `Project:`
-            must_exist=True
-        ).text
-    except ZBError:  # RfD doesn't exist
-        text = None
-    return title, text
+    return f"Redirects for discussion/Log/{year} {month} {day}"
