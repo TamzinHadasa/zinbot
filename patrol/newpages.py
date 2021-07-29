@@ -55,7 +55,7 @@ def checkqueue() -> None:
             else:
                 print(f"No match on {page=}")
         try:
-            last = queue[-1]['creation_date']
+            last: int = queue[-1]['creation_date']
         except KeyError as e:  # Unlikely to ever happen but...
             raise ZBError("No 'creation_date' on last entry") from e
         # Intentionally starts next queue on final timestamp, not 1 past
