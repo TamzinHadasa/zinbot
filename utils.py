@@ -1,5 +1,6 @@
 """Utility functions for various tasks of 'zinbot."""
 import json
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from typing import Any, Callable, Literal
 
@@ -37,9 +38,28 @@ class APIError(Exception):
                     f.write(str(event))
 
 
-
 class ZBError(Exception):
     """Generic exception for errors specific to 'zinbot's behavior."""
+
+
+@dataclass
+class Authorization:
+    """Dataclass for OAuth1Token.  Call privately in config.
+
+    Args / Attributes:
+      Match the output of the MW OAuth consumer dialog.
+    """
+    client_key: str
+    client_secret: str
+    access_key: str
+    access_secret: str
+
+    def session(self) -> OAuth1Session:
+        """Create OAuth1Session using instance data attributes."""
+        return OAuth1Session(self.client_key,
+                             client_secret=self.client_secret,
+                             resource_owner_key=self.access_key,
+                             resource_owner_secret=self.access_secret)
 
 
 class Bot:
@@ -58,16 +78,16 @@ class Bot:
                         'login', 'patrol', 'rollback',
                         'setglobalaccountstatus', 'userrights', 'watch']
 
-    def __init__(self, token: dict[str, str]) -> None:
-        """Initializes Bot object
+    def __init__(self, token: Authorization) -> None:
+        """Initializes Bot object.
 
+        Args:
+          token:  An OAuth1Token with which to configure an
+            OAuth1Session.
         """
         # Signs all API requests with the bot's OAuth data.
-        self.session = OAuth1Session(token['c_key'],
-                                     client_secret=token['c_secret'],
-                                     resource_owner_key=token['a_key'],
-                                     resource_owner_secret=token['a_secret'])
-        # Yes it caches, but still preferable to only call once
+        self.session = token.session()
+        # Yes it caches, but still preferable to only call once.
         self.site = Site()
 
     # Could do a whole type implementation of the API's response as
@@ -84,7 +104,7 @@ class Bot:
           **kwargs:  Keyword arguments to pass to `method`.
 
         Returns:
-          A dictionary matching the JSON structure of the relevant API
+          An object matching the JSON structure of the relevant API
           Response.
 
         Raises:
@@ -119,7 +139,7 @@ class Bot:
           See ._api() documentation.
         """
         return self._api('get',
-                         params={"format": "json", **params})
+                         params={'format': 'json', **params})
 
     def post(self, params: dict[str, Any],
              tokentype: TokenType = 'csrf') -> Any:
@@ -163,7 +183,7 @@ class Bot:
                                           'type': tokentype})
         try:
             # How MW names all tokens.
-            token: str = query['query']['tokens'][tokentype+'token']
+            token: str = query['query']['tokens'][tokentype + 'token']
         except KeyError as e:
             raise APIError("No token obtained.", query) from e
         if token == R"+\\":
@@ -212,7 +232,7 @@ def log_onwiki(event: str, logpage: str, prefix: str = "User:'zinbot/logs/",
       summary:  A custom edit summary to use.
     """
     zb.post({'action': 'edit',
-             'title': prefix+logpage,
+             'title': prefix + logpage,
              'appendtext': event,
              'summary': summary})
 
