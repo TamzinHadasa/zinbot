@@ -1,5 +1,5 @@
 """Functions for interacting with the NewPagesFeed."""
-from typing import Literal
+from typing import Any, Literal
 
 from pywikibot import Page
 
@@ -7,9 +7,8 @@ from utils import ZBError, zb, log_local
 from patrol.rfd import check_rfd
 
 
-# Setting `start` to 0 throws an error with the API.
 def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
-               start: int = 1) -> list[dict]:
+               start: int = 1) -> list[dict[str, Any]]:
     """Build a NewPagesFeed queue of unreviewed pages in the mainspace.
 
     Args:
@@ -19,24 +18,25 @@ def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
         "nominated for deletion", not "deleted".)  Setting none of these
         is the same as setting all of them.
       start:  A timestamp to start at, in a format accepted by the MW
-        API.
+        API.  NOTE:  Setting to 0 throws an error with the API.
 
     Returns:
       A list of dicts, potentially empty, based on on the 'pages' field
       of the JSON returned by the API.
     """
-    queue = zb.get({'action': 'pagetriagelist',
-                    'namespace': 0,  # Main
-                    'showunreviewed': 1,
-                    'dir': 'oldestreview',
-                    # NOTE: Move to constant if referenced elsewhere.
-                    'limit': 200,
-                    'date_range_from': start}
-                   | {i: 1 for i in show})
-    return queue['pagetriagelist']['pages']
+    queue: list[dict[str, Any]] = zb.get(
+        {'action': 'pagetriagelist',
+         'namespace': 0,  # Main
+         'showunreviewed': True,
+         'dir': 'oldestreview',
+         'limit': 200,  # NOTE: Move to constant if referenced elsewhere.
+         'date_range_from': start}
+        | {i: True for i in show}
+    )['pagetriagelist']['pages']
+    return queue
 
 
-def checkqueue():
+def checkqueue() -> None:
     """Loop through NewPagesFeed, 200 items at a time.
 
     Uses buildqueue(), set to 'showdeleted' mode.
@@ -72,7 +72,7 @@ def checkqueue():
     print("Queue complete")
 
 
-def patrol(page: Page):
+def patrol(page: Page) -> None:
     """Patrol a page using PageTriage.
 
     Arg:
@@ -80,7 +80,7 @@ def patrol(page: Page):
     """
     zb.post({'action': 'pagetriageaction',
              'pageid': page.pageid,
-             'reviewed': 1,
-             'skipnotif': 1})  # May change based on community's feelings.
+             'reviewed': True,
+             'skipnotif': True})  # May change based on community's feelings.
     print(f"Patrolled {page.title()}")
     log_local(page, "patrolledpages.txt")

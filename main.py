@@ -6,7 +6,7 @@ __email__ = "coding@tamz.in"
 
 import patrol.newpages
 
-def run():
+def run() -> None:
     """Run the bot's tasks that are currently approved / in trial."""
     patrol.newpages.checkqueue()  # pre-trial
 
