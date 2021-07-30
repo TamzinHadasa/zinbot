@@ -3,8 +3,8 @@ from typing import Any, Literal
 
 from pywikibot import Page
 
+import rfd
 from utils import ZBError, zb, log_local
-from patrol.rfd import check_rfd
 
 
 def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
@@ -49,7 +49,7 @@ def checkqueue() -> None:
     while True:
         for page in queue:
             page = zb.getpage(page['title'])
-            if check_rfd(page):
+            if rfd.check_rfd(page):
                 print(f"MATCH on {page=}")
                 patrol(page)
             else:
