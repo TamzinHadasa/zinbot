@@ -8,7 +8,7 @@ from pywikibot import Page, Site
 from requests import Response
 from requests_oauthlib import OAuth1Session
 
-from config import bot_token
+from config import bot_auth
 
 API_URL = "https://test.wikipedia.org/w/api.php?"
 WIKI_URL = "https://test.wikipedia.org/wiki/"
@@ -54,6 +54,13 @@ class Authorization:
     access_key: str
     access_secret: str
 
+    def __repr__(self) -> str:
+        return(f"Authorization({self.client_key}, {self.client_secret}, "
+               f"{self.access_key}, {self.access_secret})")
+
+    def __str__(self) -> str:
+        return(f"<Authorization object with access key {self.access_key}>")
+
     def session(self) -> OAuth1Session:
         """Create OAuth1Session using instance data attributes."""
         return OAuth1Session(self.client_key,
@@ -78,17 +85,23 @@ class Bot:
                         'login', 'patrol', 'rollback',
                         'setglobalaccountstatus', 'userrights', 'watch']
 
-    def __init__(self, token: Authorization) -> None:
+    def __init__(self, auth: Authorization) -> None:
         """Initializes Bot object.
 
         Args:
-          token:  An OAuth1Token with which to configure an
+          auth:  An Authorization with which to configure an
             OAuth1Session.
         """
-        # Signs all API requests with the bot's OAuth data.
-        self.session = token.session()
+        self._auth = auth
+        self.session = auth.session()
         # Yes it caches, but still preferable to only call once.
         self.site = Site()
+
+    def __repr__(self) -> str:
+        return f"Bot({self._auth!r})"
+
+    def __str__(self) -> str:
+        return f"Bot({self._auth})"
 
     # Could do a whole type implementation of the API's response as
     # dict[str, Any] or a list thereof, but given that `requests`
@@ -214,7 +227,7 @@ class Bot:
 
 
 # All non-PWB API calls through this!  Also PWB Site() requests.
-zb = Bot(bot_token)
+zb = Bot(bot_auth)
 
 
 def log_onwiki(event: str, logpage: str, prefix: str = "User:'zinbot/logs/",
