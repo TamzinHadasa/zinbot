@@ -3,8 +3,11 @@ from typing import Any, Literal
 
 from pywikibot import Page
 
-import rfd
-from utils import ZBError, zb, log_local
+import api
+from api import RequestParams
+import utils
+from patrol import rfd
+from utils import ZBError
 
 
 def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
@@ -24,15 +27,15 @@ def buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
       A list of dicts, potentially empty, based on on the 'pages' field
       of the JSON returned by the API.
     """
-    queue: list[dict[str, Any]] = zb.get(
-        {'action': 'pagetriagelist',
-         'namespace': 0,  # Main
-         'showunreviewed': True,
-         'dir': 'oldestreview',
-         'limit': 200,  # NOTE: Move to constant if referenced elsewhere.
-         'date_range_from': start}
-        | {i: True for i in show}
-    )['pagetriagelist']['pages']
+    params: RequestParams = ({'action': 'pagetriagelist',
+                             'namespace': 0,  # Main
+                              'showunreviewed': True,
+                              'dir': 'oldestreview',
+                              # NOTE: Move to constant if referenced elsewhere.
+                              'limit': 200,
+                              'date_range_from': start}
+                             | {i: True for i in show})
+    queue: list[dict[str, Any]] = api.get(params)['pagetriagelist']['pages']
     return queue
 
 
@@ -48,7 +51,7 @@ def checkqueue() -> None:
     # utils.api().
     while True:
         for page in queue:
-            page = zb.getpage(page['title'])
+            page = api.get_page(page['title'])
             if rfd.check_rfd(page):
                 print(f"MATCH on {page=}")
                 patrol(page)
@@ -66,7 +69,7 @@ def checkqueue() -> None:
         # Also would cause a break if 200+ entries have the same
         # timestamp, but a break probably makes sense there anyways,
         # because something would have to have gone horribly wrong.
-        if queue[-1]["pageid"] == newqueue[-1]["pageid"]:
+        if not newqueue or queue[-1]['pageid'] == newqueue[-1]['pageid']:
             break
         queue = newqueue
     print("Queue complete")
@@ -78,9 +81,9 @@ def patrol(page: Page) -> None:
     Arg:
       page:  A Page representing a wikipage to patrol.
     """
-    zb.post({'action': 'pagetriageaction',
-             'pageid': page.pageid,
-             'reviewed': True,
-             'skipnotif': True})  # May change based on community's feelings.
+    api.post({'action': 'pagetriageaction',
+              'pageid': page.pageid,
+              'reviewed': 1,
+              'skipnotif': True})  # May change based on community's feelings.
     print(f"Patrolled {page.title()}")
-    log_local(page, "patrolledpages.txt")
+    utils.log_local(page, "patrolledpages.txt")
