@@ -37,6 +37,10 @@ _TAGGED = re.compile(
 )
 
 
+def _dated_logpage() -> str:
+    return f"Unfiled RfDs/{api.site_time():%Y %m %d}"
+
+
 def check_rfd(page: Page) -> bool:
     """Check if a page is subject to an ongoing RfD.
 
@@ -80,14 +84,14 @@ def check_filed(page: Page) -> bool:
         ).text
     except ZBError:  # Raised by `must_exist`.
         print(f"No RfD page for {page.title()}.")
-        utils.log_local(page, "no_rfd_logpage")
+        utils.log_local(page, "no_rfd_logpage.txt")
         utils.log_onwiki(
             event=(
                 f"\n* {page.title(as_link=True)} not filed to [[{rfd_title}]] "
                 f"(currently a redlink) as  of {now}."
             ),
-            logpage="Unfiled RfDs",
-            summary="Logging a page tagged for RfD for a date where no log page exists."
+            logpage=_dated_logpage(),
+            summary=("Logging a page tagged for RfD for a date where no log page exists.")
         )
         return False
 
@@ -105,7 +109,7 @@ def check_filed(page: Page) -> bool:
                     f"\n* {page.title(as_link=True)} not filed to "
                     f"[[{rfd_title}]] as of {now}."
                 ),
-                logpage="Unfiled RfDs",
+                logpage=_dated_logpage(),
                 summary=(
                     "Logging a page tagged for RfD more than 30 minutes ago, "
                     "where no RfD has been filed."
