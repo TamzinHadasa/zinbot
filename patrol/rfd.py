@@ -38,7 +38,7 @@ _TAGGED = re.compile(
 
 
 def _dated_logpage() -> str:
-    return f"Unfiled RfDs/{api.site_time():%Y %m %d}"
+    return f"Unfiled RfDs/{api.site_time():%Y %B %d}".replace(" 0", " ")
 
 
 def check_rfd(page: Page) -> bool:
@@ -74,21 +74,22 @@ def check_filed(page: Page) -> bool:
       title.
     """
     now = api.site_time()
-    rfd_title = find_rfd(page)
-
+    dtformat = "%H:%M:%S %Y-%m-%d (UTC)"
+    rfd_title = extract_rfd(page)
     try:
-        rfd_text = api.get_page(
+        rfd = api.get_page(
             title=rfd_title,
             ns=4,  # `Project:`
             must_exist=True
-        ).text
+        )
     except ZBError:  # Raised by `must_exist`.
         print(f"No RfD page for {page.title()}.")
         utils.log_local(page, "no_rfd_logpage.txt")
         utils.log_onwiki(
             event=(
-                f"\n* {page.title(as_link=True)} not filed to [[{rfd_title}]] "
-                f"(currently a redlink) as  of {now}."
+                (f"\n* {page.title(as_link=True)} not filed to "
+                 f"[[Wikipedia:{rfd_title}]] (currently a redlink) as of "
+                 f" {now:{dtformat}}.")
             ),
             logpage=_dated_logpage(),
             summary=("Logging a page tagged for RfD for a date where no log page exists.")
@@ -98,7 +99,7 @@ def check_filed(page: Page) -> bool:
     # What idiot made this line necessary by building quotation-mark
     # escaping into {{rfd2}}?  Oh right.  Me.
     escaped = page.title().replace('"', "&quot;")
-    filed = f'*<span id="{escaped}">' in rfd_text
+    filed = f'*<span id="{escaped}">' in rfd.text
     if not filed:
         print(f"RfD not filed for {page.title()}.")
         utils.log_local(page, "unfiledRfDs.txt")
@@ -107,7 +108,7 @@ def check_filed(page: Page) -> bool:
             utils.log_onwiki(
                 event=(
                     f"\n* {page.title(as_link=True)} not filed to "
-                    f"[[{rfd_title}]] as of {now}."
+                    f"[[Wikipedia:{rfd_title}]] as of {now:{dtformat}}."
                 ),
                 logpage=_dated_logpage(),
                 summary=(
@@ -115,10 +116,24 @@ def check_filed(page: Page) -> bool:
                     "where no RfD has been filed."
                 )
             )
+    elif ("Wikipedia:Redirects for discussion"
+          not in [i.title() for i in rfd.embeddedin()]):
+        print(f"{rfd_title} not transcluded to main RfD page.")
+        utils.log_local(page, "rfd_log_not_transcluded.txt")
+        utils.log_onwiki(
+            event=(
+                f"\n* {page.title(as_link=True)} filed to "
+                f"[[Wikipedia:{rfd_title}]], but that log page has not been "
+                f"transcluded to main RfD page as of {now:{dtformat}}."
+            ),
+            logpage=_dated_logpage(),
+            summary=("Logging a page filed to an RfD log page that has not been transcluded.")
+        )
+        return False
     return filed
 
 
-def find_rfd(page: Page) -> str:
+def extract_rfd(page: Page) -> str:
     """Get the title of the log page referenced by an RfD tag.
 
     Uses the standard RfD log format and the `year`, `month`, and `day`
