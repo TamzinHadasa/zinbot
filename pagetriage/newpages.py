@@ -16,7 +16,7 @@ Queue = list[dict[str, Any]]
 def checkqueue() -> None:
     """Loop through NewPagesFeed, 200 items at a time.
 
-    Uses `buildqueue`, set to 'showdeleted' mode.
+    Uses `_buildqueue`, set to 'showdeleted' mode.
     """
     queue = _buildqueue(['showdeleted'])
     # The practical limit on this is that, if there's some unforeseen
@@ -39,7 +39,7 @@ def checkqueue() -> None:
         # as long as we account for the fact that `newqueue` will thus
         # always have a length of at least 1.
         newqueue = _buildqueue(['showdeleted'], start=last)
-        # In theroy would als cause a break if 200+ entries have the
+        # In theory would also cause a break if 200+ entries have the
         # same timestamp.  Yeah, that's fine.
         if not newqueue or queue[-1]['pageid'] == newqueue[-1]['pageid']:
             break
