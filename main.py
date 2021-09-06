@@ -4,12 +4,12 @@ __copyright__ = "Copyright 2021, Tamzin Hadasa Kelly"
 __license__ = "The MIT License"
 __email__ = "coding@tamz.in"
 
-import patrol.newpages
+import pagetriage.newpages
 
 
 def run() -> None:
     """Run the bot's tasks that are currently approved / in trial."""
-    patrol.newpages.checkqueue()  # pre-trial
+    pagetriage.newpages.checkqueue()  # pre-trial
 
 
 if __name__ == "__main__":

@@ -11,9 +11,9 @@ from pywikibot import Page, Timestamp
 from requests import Response
 
 import config
+import constants
 from utils import ZBError
 
-_API_URL = "https://test.wikipedia.org/w/api.php?"
 _session = config.zb.session()
 # To avoid calling anew each time `getpage` is called.  Cached
 # regardless but still better to avoid repeat calls.
@@ -21,11 +21,11 @@ _site = pwb.Site()
 RequestParams = dict[str, object]
 # Awaiting resolution of <https://github.com/python/mypy/issues/731>.
 # Till then, best for base JSON functions to return Any while calling
-# functions annotate specific return types.
+# functions and annotate specific return types.
 # ResponseJSON = dict[str, 'ResponseJSON'] | list['ResponseJSON']
-TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount',
-                    'login', 'patrol', 'rollback',
-                    'setglobalaccountstatus', 'userrights', 'watch']
+TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
+                    'patrol', 'rollback', 'setglobalaccountstatus',
+                    'userrights', 'watch']
 
 
 class APIError(Exception):
@@ -45,10 +45,10 @@ class APIError(Exception):
         super().__init__(msg)
         if event:
             try:
-                with open("logs/APIError.json", 'w') as f:
+                with open("logs/APIError.json", 'w', encoding='utf-8') as f:
                     json.dump(event, f)
             except TypeError:
-                with open("logs/APIError.txt", 'w') as f:
+                with open("logs/APIError.txt", 'w', encoding='utf-8') as f:
                     f.write(str(event))
 
 
@@ -78,7 +78,7 @@ def _request(methodname: Literal['get', 'post'],
     """
     method: Callable[..., Response] = getattr(_session, methodname)
     # Can raise requests.HTTPError
-    response = method(_API_URL, **kwargs)
+    response = method(constants.API_URL, **kwargs)
     if not response:  # status code > 400
         raise APIError(f"{response.status_code=}", response.content)
     try:
@@ -99,7 +99,7 @@ def get(params: RequestParams) -> Any:
       params:  Params to supplement/override the default ones.
 
     Returns / Raises:
-      See ._api() documentation.
+      See `_request` documentation.
     """
     return _request('get',
                     params={'format': 'json', **params})
@@ -112,16 +112,16 @@ def post(params: RequestParams, tokentype: TokenType = 'csrf') -> Any:
     request's body (a CSRF token) through a get_token() call defaulting
     to CSRF.
 
-    Since Response error handling is internal (through api()), in most
+    Since Response error handling is internal (through `api`), in most
     cases it will not be necessary to access the returned dict.
 
     Args:
       params:  Params to supplement/override the default ones.
-      tokentype:  A TokenType to pass to get_token().  Defaults to
-        'csrf' like get_token() and the MW API.
+      tokentype:  A TokenType to pass to `get_token`.  Defaults to
+        'csrf' like `get_token` and the MW API.
 
     Returns / Raises:
-      See ._api() documentation.
+      See `_request` documentation.
     """
     return _request('post',
                     params={'format': 'json', **params},
@@ -132,11 +132,10 @@ def get_token(tokentype: TokenType = 'csrf') -> str:
     R"""Request a token (CSRF by default) from the MediaWiki API.
 
     Args:
-    tokentype:  A type of token, among the literals defined by
-      TokenType.  Defaults to 'csrf' like the MW API.
+    tokentype:  A TokenType.  Defaults to 'csrf' like the MW API.
 
     Returns:
-      A string matching a validly-formatted token of the specified type.
+      A str matching a validly-formatted token of the specified type.
 
     Raises:
       APIError from KeyError:  If the query response has no token field.

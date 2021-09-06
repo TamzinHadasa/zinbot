@@ -7,14 +7,15 @@ patrol them.  After 30 minutes of not being filed to RfD, a page is
 logged as such on-wiki.
 """
 import datetime as dt
+from enum import Enum
 import re
 
 import mwparserfromhell as mwph
-from pywikibot import Page, Timestamp
+from pywikibot import Page
 
 import api
 import utils
-from utils import ZBError
+from utils import Namespace, OnWikiLogger, Title, ZBError
 
 # This is only guaranteed to match the output of {{subst:rfd}}.  If for
 # some reason someone manually added the subst'd output and changed with
@@ -35,10 +36,15 @@ _TAGGED = re.compile(
 <!-- End of RFD message\. Don't edit anything above here, but feel free to edit below here\. -->\|content=
 \#[Rr][Ee][Dd][Ii][Rr][Ee][Cc][Tt] *\[\[.+?\]\]"""
 )
+_onwiki_logger = OnWikiLogger("skippedRfDs.json")
 
 
-def _dated_logpage() -> str:
-    return f"Unfiled RfDs/{api.site_time():%Y %B %d}".replace(" 0", " ")
+class Messages(Enum):
+    """Contains messages for the log."""
+    RFD0 = "[[{page}]] not filed to [[{rfd}]] (currently a redlink)."
+    RFD1 = "[[{page}]] not filed to [[Wikipedia:{rfd}]]."
+    RFD2 = ("[[{page}]] filed to [[Wikipedia:{rfd}]], but that log page has "
+            "not been transcluded to main RfD page.")
 
 
 def check_rfd(page: Page) -> bool:
@@ -55,10 +61,10 @@ def check_rfd(page: Page) -> bool:
       (If the former but not the latter, the distinction is made clear
       by logs.)
     """
-    return bool(_TAGGED.match(page.text)) and check_filed(page)
+    return bool(_TAGGED.match(page.text)) and _check_filed(page)
 
 
-def check_filed(page: Page) -> bool:
+def _check_filed(page: Page) -> bool:
     """Check an RfD log page for an anchor matching the page's title.
 
     {{subst:rfd2}} makes such anchors automatically.  As with TAGGED, no
@@ -74,66 +80,38 @@ def check_filed(page: Page) -> bool:
       title.
     """
     now = api.site_time()
-    dtformat = "%H:%M:%S %Y-%m-%d (UTC)"
-    rfd_title = extract_rfd(page)
+    rfd_title = _extract_rfd(page)
+    page_title = Title.from_page(page)
     try:
-        rfd = api.get_page(
-            title=rfd_title,
-            ns=4,  # `Project:`
-            must_exist=True
-        )
-    except ZBError:  # Raised by `must_exist`.
-        print(f"No RfD page for {page.title()}.")
-        utils.log_local(page, "no_rfd_logpage.txt")
-        utils.log_onwiki(
-            event=(
-                (f"\n* {page.title(as_link=True)} not filed to "
-                 f"[[Wikipedia:{rfd_title}]] (currently a redlink) as of "
-                 f" {now:{dtformat}}.")
-            ),
-            logpage=_dated_logpage(),
-            summary=("Logging a page tagged for RfD for a date where no log page exists.")
-        )
+        rfd = api.get_page(title=rfd_title,
+                           ns=Namespace.PROJECT,
+                           must_exist=True)
+    except ZBError:
+        print(f"No RfD page for {page_title}.")
+        utils.log_local(page_title, "no_rfd_logpage.txt")
+        _onwiki_logger.log(Messages.RFD0, page_title, now, rfd=rfd_title)
         return False
 
-    # What idiot made this line necessary by building quotation-mark
-    # escaping into {{rfd2}}?  Oh right.  Me.
-    escaped = page.title().replace('"', "&quot;")
-    filed = f'*<span id="{escaped}">' in rfd.text
+    # What idiot made this line necessary by building quotation-mark escaping
+    # into {{rfd2}}?  Oh right.  Me.
+    filed = ('*<span id="{}">'.format(page_title.replace('"', "&quot;"))
+             in rfd.text)
     if not filed:
-        print(f"RfD not filed for {page.title()}.")
-        utils.log_local(page, "unfiledRfDs.txt")
-        edited: Timestamp = page.editTime()  # Subclass of dt.datetime.
-        if now - edited > dt.timedelta(minutes=30):
-            utils.log_onwiki(
-                event=(
-                    f"\n* {page.title(as_link=True)} not filed to "
-                    f"[[Wikipedia:{rfd_title}]] as of {now:{dtformat}}."
-                ),
-                logpage=_dated_logpage(),
-                summary=(
-                    "Logging a page tagged for RfD more than 30 minutes ago, "
-                    "where no RfD has been filed."
-                )
-            )
+        print(f"RfD not filed for {page_title}.")
+        utils.log_local(page_title, "rfd_not_filed.txt")
+        if now - page.editTime() > dt.timedelta(minutes=30):
+            _onwiki_logger.log(Messages.RFD1, page_title, now,
+                               rfd=rfd_title)
     elif ("Wikipedia:Redirects for discussion"
           not in [i.title() for i in rfd.embeddedin()]):
         print(f"{rfd_title} not transcluded to main RfD page.")
-        utils.log_local(page, "rfd_log_not_transcluded.txt")
-        utils.log_onwiki(
-            event=(
-                f"\n* {page.title(as_link=True)} filed to "
-                f"[[Wikipedia:{rfd_title}]], but that log page has not been "
-                f"transcluded to main RfD page as of {now:{dtformat}}."
-            ),
-            logpage=_dated_logpage(),
-            summary=("Logging a page filed to an RfD log page that has not been transcluded.")
-        )
+        utils.log_local(page_title, "rfd_log_not_transcluded.txt")
+        _onwiki_logger.log(Messages.RFD2, page_title, now, rfd=rfd_title)
         return False
     return filed
 
 
-def extract_rfd(page: Page) -> str:
+def _extract_rfd(page: Page) -> Title:
     """Get the title of the log page referenced by an RfD tag.
 
     Uses the standard RfD log format and the `year`, `month`, and `day`
@@ -145,13 +123,32 @@ def extract_rfd(page: Page) -> str:
         {{subst:rfd}}.
 
     Returns:
-      A str for an RfD log page, without guarantee that the page exists.
+      A Title for an RfD log page, without guarantee that the page exists.
     """
-    parsed = mwph.parse(page.text)
     # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
-    parsed.replace("<includeonly>safesubst:</includeonly>#invoke:RfD",
-                   "fake template")
+    text = page.text.replace("<includeonly>safesubst:</includeonly>", "")
+    parsed = mwph.parse(text)
     template = parsed.filter_templates()[0]
     year, month, day = (template.get(s).value.strip()
                         for s in ("year", "month", "day"))
-    return f"Redirects for discussion/Log/{year} {month} {day}"
+    return Title(Namespace.PROJECT,
+                 f"Redirects for discussion/Log/{year} {month} {day}")
+
+
+# def _log_event(code: Literal['RFD0', 'RFD1', 'RFD2'],
+#                page_title: str,
+#                rfd_title: str,
+#                timestamp: str) -> None:
+#     _onwiki_logger.log(
+#         {'page': page_title,
+#          'code': code,
+#          'message': _log_messages[code].format(page_title=page_title,
+#                                                rfd_title=rfd_title),
+#          'timestamp': timestamp}
+#     )
+
+
+def cleanup() -> None:
+    """Public wrapper for `_onwiki_logger.cleanup()`."""
+    if _onwiki_logger.cleanup():
+        print("Cleaning up RfD log on-wiki")

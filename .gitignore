@@ -4,6 +4,7 @@ apicache-py3/
 logs/
 _local/
 .pylintrc
+mypy.ini
 config.py
 pywikibot.lwp
 throttle.ctrl
