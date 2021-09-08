@@ -1,4 +1,5 @@
 __pycache__/
+.venv/
 .vscode/
 apicache-py3/
 logs/
