@@ -130,7 +130,7 @@ class OnWikiLogger:
         self,
         logpage: str,
         ns_and_basepage: tuple[Namespace, str] = (Namespace.USER,
-                                                  "Tamzin/logs/")
+                                                  "'zinbot/logs/")
     ) -> None:
         """Initialize an OnWikiLogger.
 

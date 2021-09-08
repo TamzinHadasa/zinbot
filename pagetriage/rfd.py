@@ -27,7 +27,7 @@ from utils import Namespace, OnWikiLogger, Title, ZBError
 # probably be speedily resolved).
 # pylint: disable=line-too-long
 _TAGGED = re.compile(
-    r"""\{\{<includeonly>safesubst:</includeonly>\#invoke:RfD\|{3}month = \w+
+    r"""\{\{<includeonly>safesubst:</includeonly>\#invoke:RfD(\|.*?){3}month = \w+
 \|day = [ \d]\d
 \|year = \d{4}
 \|time = \d{2}:\d{2}
@@ -39,11 +39,10 @@ _TAGGED = re.compile(
 _onwiki_logger = OnWikiLogger("skippedRfDs.json")
 
 
-class Messages(Enum):
-    """Contains messages for the log."""
+class _Messages(Enum):
     RFD0 = "[[{page}]] not filed to [[{rfd}]] (currently a redlink)."
-    RFD1 = "[[{page}]] not filed to [[Wikipedia:{rfd}]]."
-    RFD2 = ("[[{page}]] filed to [[Wikipedia:{rfd}]], but that log page has "
+    RFD1 = "[[{page}]] not filed to [[{rfd}]]."
+    RFD2 = ("[[{page}]] filed to [[{rfd}]], but that log page has "
             "not been transcluded to main RfD page.")
 
 
@@ -83,30 +82,30 @@ def _check_filed(page: Page) -> bool:
     rfd_title = _extract_rfd(page)
     page_title = Title.from_page(page)
     try:
-        rfd = api.get_page(title=rfd_title,
-                           ns=Namespace.PROJECT,
+        rfd = api.get_page(title=rfd_title.pagename,
+                           ns=rfd_title.namespace,
                            must_exist=True)
     except ZBError:
         print(f"No RfD page for {page_title}.")
         utils.log_local(page_title, "no_rfd_logpage.txt")
-        _onwiki_logger.log(Messages.RFD0, page_title, now, rfd=rfd_title)
+        _onwiki_logger.log(_Messages.RFD0, page_title, now, rfd=rfd_title)
         return False
 
     # What idiot made this line necessary by building quotation-mark escaping
     # into {{rfd2}}?  Oh right.  Me.
-    filed = ('*<span id="{}">'.format(page_title.replace('"', "&quot;"))
-             in rfd.text)
+    anchor = page_title.replace('"', "&quot;").removeprefix(":")
+    filed = f'*<span id="{anchor}">' in rfd.text
     if not filed:
         print(f"RfD not filed for {page_title}.")
         utils.log_local(page_title, "rfd_not_filed.txt")
         if now - page.editTime() > dt.timedelta(minutes=30):
-            _onwiki_logger.log(Messages.RFD1, page_title, now,
+            _onwiki_logger.log(_Messages.RFD1, page_title, now,
                                rfd=rfd_title)
     elif ("Wikipedia:Redirects for discussion"
           not in [i.title() for i in rfd.embeddedin()]):
         print(f"{rfd_title} not transcluded to main RfD page.")
         utils.log_local(page_title, "rfd_log_not_transcluded.txt")
-        _onwiki_logger.log(Messages.RFD2, page_title, now, rfd=rfd_title)
+        _onwiki_logger.log(_Messages.RFD2, page_title, now, rfd=rfd_title)
         return False
     return filed
 
@@ -133,19 +132,6 @@ def _extract_rfd(page: Page) -> Title:
                         for s in ("year", "month", "day"))
     return Title(Namespace.PROJECT,
                  f"Redirects for discussion/Log/{year} {month} {day}")
-
-
-# def _log_event(code: Literal['RFD0', 'RFD1', 'RFD2'],
-#                page_title: str,
-#                rfd_title: str,
-#                timestamp: str) -> None:
-#     _onwiki_logger.log(
-#         {'page': page_title,
-#          'code': code,
-#          'message': _log_messages[code].format(page_title=page_title,
-#                                                rfd_title=rfd_title),
-#          'timestamp': timestamp}
-#     )
 
 
 def cleanup() -> None:

@@ -4,6 +4,7 @@
 # a `framework` subpackage.
 import json
 from json.decoder import JSONDecodeError
+import time
 from typing import Any, Callable, Literal
 
 import pywikibot as pwb
@@ -17,7 +18,7 @@ from utils import ZBError
 _session = config.zb.session()
 # To avoid calling anew each time `getpage` is called.  Cached
 # regardless but still better to avoid repeat calls.
-_site = pwb.Site()
+_site = pwb.Site('en')
 RequestParams = dict[str, object]
 # Awaiting resolution of <https://github.com/python/mypy/issues/731>.
 # Till then, best for base JSON functions to return Any while calling
@@ -101,16 +102,17 @@ def get(params: RequestParams) -> Any:
     Returns / Raises:
       See `_request` documentation.
     """
-    return _request('get',
-                    params={'format': 'json', **params})
+    return _request('get', params={'format': 'json', **params})
 
 
 def post(params: RequestParams, tokentype: TokenType = 'csrf') -> Any:
     """Send POST request within the OAuth-signed session.
 
     Automatically specifies output in JSON (overridable), and sets the
-    request's body (a CSRF token) through a get_token() call defaulting
-    to CSRF.
+    request's body (a CSRF token) through a `get_token` call defaulting
+    to 'csrf'.
+
+    Sleeps for 10 seconds after receiving response.
 
     Since Response error handling is internal (through `api`), in most
     cases it will not be necessary to access the returned dict.
@@ -123,9 +125,11 @@ def post(params: RequestParams, tokentype: TokenType = 'csrf') -> Any:
     Returns / Raises:
       See `_request` documentation.
     """
-    return _request('post',
-                    params={'format': 'json', **params},
-                    data={'token': get_token(tokentype)})
+    response = _request('post',
+                        params={'format': 'json', **params},
+                        data={'token': get_token(tokentype)})
+    time.sleep(10)
+    return response
 
 
 def get_token(tokentype: TokenType = 'csrf') -> str:

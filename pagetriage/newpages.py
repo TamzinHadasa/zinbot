@@ -1,5 +1,5 @@
 """Functions for interacting with the NewPagesFeed."""
-import time
+from enum import Enum
 from typing import Any, Literal
 
 from pywikibot import Page
@@ -8,9 +8,15 @@ import api
 from api import RequestParams
 import utils
 from pagetriage import rfd
-from utils import Namespace, ZBError
+from utils import Namespace, OnWikiLogger, Title, ZBError
 
 Queue = list[dict[str, Any]]
+_onwiki_logger = OnWikiLogger("mockReviews.json",
+                              (Namespace.USER, "'zinbot/trial/1/"))
+
+
+class _Messages(Enum):
+    REV0 = "Would have reviewed this if enabled."
 
 
 def checkqueue() -> None:
@@ -27,7 +33,7 @@ def checkqueue() -> None:
             page = api.get_page(page['title'])
             if rfd.check_rfd(page):
                 print(f"MATCH on {page=}")
-                _review(page)
+                _mock_review(page)
             else:
                 print(f"No match on {page=}")
         try:
@@ -44,9 +50,6 @@ def checkqueue() -> None:
         if not newqueue or queue[-1]['pageid'] == newqueue[-1]['pageid']:
             break
         queue = newqueue
-        # Rate limit.  NOTE: Will have to move somewhere else if tasks
-        # are added that don't run through `checkqueue`.
-        time.sleep(10)
     print("Queue complete. Checking if log cleanup is necessary.")
     rfd.cleanup()
 
@@ -71,7 +74,7 @@ def _buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
     params: RequestParams = ({'action': 'pagetriagelist',
                               'namespace': Namespace.MAIN,
                               'showunreviewed': True,
-                              'dir': 'oldestreview',
+                              'dir': 'oldestfirst',
                               'limit': 200,
                               'date_range_from': start}
                              | {i: True for i in show})
@@ -90,5 +93,12 @@ def _review(page: Page) -> None:
               'pageid': page.pageid,
               'reviewed': 1,
               'skipnotif': True})  # May change based on community's feelings.
-    print(f"Patrolled {page_title}")
+    print(f"Reviewed {page_title}")
     utils.log_local(page_title, "reviewedpages.txt")
+
+
+def _mock_review(page: Page) -> None:
+    page_title = Title.from_page(page)
+    _onwiki_logger.log(_Messages.REV0, page_title, api.site_time())
+    print(f"Mock-reviewed {page_title}")
+    utils.log_local(page_title, "mockreviewedpages.txt")
