@@ -16,7 +16,7 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    print("RUNNING")
+    print(f"RUNNING (version {__version__})")
     while True:
         run()
         print("Run done. Sleeping.")
