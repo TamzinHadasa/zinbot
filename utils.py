@@ -1,9 +1,10 @@
 """Utility functions."""
+from contextlib import contextmanager
 import datetime as dt
 from enum import Enum, IntEnum
 import json
 import urllib.parse
-from typing import Any, Optional, TypedDict
+from typing import Any, Generator, Optional, TypedDict
 
 from pywikibot import Page, Timestamp
 
@@ -147,6 +148,20 @@ class OnWikiLogger:
     def __repr__(self) -> str:
         return f"Logger({self._logpage}, {self._ns_and_basepage})"
 
+    @classmethod
+    def day_too_old(cls, timestamp: str) -> bool:
+        """See if a log entry is more than 7 days old.
+
+        Arg:
+          timestamp:  A str drawn from an Event's 'timestamp' item.
+
+        Returns:
+          A bool indicating whether the timestamp is more than 7 days
+            ago.
+        """
+        as_date = dt.datetime.strptime(timestamp, cls._dateformat).date()
+        return api.site_time().date() - as_date > dt.timedelta(days=7)
+
     def _load_json(self) -> LoggerData:
         return json.loads(api.get_page(self._logtitle.pagename,
                                        self._logtitle.namespace).text)
@@ -157,10 +172,23 @@ class OnWikiLogger:
                   'text': json.dumps(data),
                   'summary': summary})
 
-    def _is_too_old(self, timestamp: str) -> bool:
-        return (api.site_time().date()
-                - dt.datetime.strptime(timestamp, self._dateformat).date()
-                > dt.timedelta(days=7))
+    @contextmanager
+    def edit(self, summary: str) -> Generator[LoggerData, None, None]:
+        """Context manager for editing the log.
+
+        Arg:
+          summary:  A str to use as the edit summary when saving.
+
+        Yields:
+          A generator of LoggerData.
+        """
+        data = self._load_json()
+        olddata = data.copy()
+        try:
+            yield data
+        finally:
+            if data != olddata:
+                self._save_json(data, summary)
 
     def log(self,
             message: Enum,
@@ -178,54 +206,18 @@ class OnWikiLogger:
           **formatters:  Objects to pass to the Enum's value for
             formatting.
         """
-        data = self._load_json()
-        if page in [i['page'] for day in data.values() for i in day]:
-            return  # Skip if already logged.
-        event: Event = {'page': page,
-                        'code': message.name,
-                        'message': message.value.format(page=page,
-                                                        **formatters),
-                        'timestamp': timestamp.strftime(self._timestampformat)}
-        now = api.site_time().strftime(self._dateformat)
-        if now not in data:
-            data[now] = []
-        data[now].append(event)
-        self._save_json(data, f"Logging [[{page}]] (code {message.name})")
-
-    def cleanup(self) -> bool:
-        """Remove old and resolved log entries.
-
-        Returns:
-          A bool indicating whether cleanup occurred.
-        """
-        data = self._load_json()
-        newdata = {k: [i for i in v if not _is_reviewed(i['page'])]
-                   for k, v in data.items() if v and not self._is_too_old(k)}
-        if newdata != data:
-            self._save_json(newdata, "Removing old and/or reviewed entries.")
-            return True
-        return False
-
-
-# Probably shouldn't be in `utils` long-term but it's fine for now.
-def _is_reviewed(page: str) -> bool:
-    logs = api.get({'action': 'query',
-                    'list': 'logevents',
-                    'letitle': page,
-                    'letype': 'pagetriage-curation'})['query']['logevents']
-    for entry in logs:
-        # Commented out till <https://github.com/python/mypy/pull/10191>
-        # is done:
-        # match entry['action']:
-        #     case 'reviewed':
-        #         return True
-        #     case 'unreviewed':
-        #         return False
-        if entry['action'] == 'reviewed':
-            return True
-        if entry['action'] == 'unreviewed':
-            return False
-    return False
+        with self.edit(f"Logging [[{page}]] (code {message.name})") as data:
+            if page in [i['page'] for day in data.values() for i in day]:
+                return  # Skip if already logged.
+            now = api.site_time().strftime(self._dateformat)
+            if now not in data:
+                data[now] = []
+            data[now].append({
+                'page': page,
+                'code': message.name,
+                'message': message.value.format(page=page, **formatters),
+                'timestamp': timestamp.strftime(self._timestampformat)
+            })
 
 
 def log_local(title: Title, logfile: str) -> None:

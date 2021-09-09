@@ -9,6 +9,7 @@ logged as such on-wiki.
 import datetime as dt
 from enum import Enum
 import re
+from typing import Any, Union
 
 import mwparserfromhell as mwph
 from pywikibot import Page
@@ -17,6 +18,7 @@ import api
 import utils
 from utils import Namespace, OnWikiLogger, Title, ZBError
 
+FiledCheck = Union[bool, re.Match[Any], None]
 # This is only guaranteed to match the output of {{subst:rfd}}.  If for
 # some reason someone manually added the subst'd output and changed with
 # the spacing, it would not read as a match.  This can be changed if
@@ -46,7 +48,7 @@ class _Messages(Enum):
             "not been transcluded to main RfD page.")
 
 
-def check_rfd(page: Page) -> bool:
+def check_rfd(page: Page) -> FiledCheck:
     """Check if a page is subject to an ongoing RfD.
 
     First checks for the {{subst:rfd}} tag, then for whether there's an
@@ -63,7 +65,7 @@ def check_rfd(page: Page) -> bool:
     return bool(_TAGGED.match(page.text)) and _check_filed(page)
 
 
-def _check_filed(page: Page) -> bool:
+def _check_filed(page: Page) -> FiledCheck:
     """Check an RfD log page for an anchor matching the page's title.
 
     {{subst:rfd2}} makes such anchors automatically.  As with TAGGED, no
@@ -94,13 +96,14 @@ def _check_filed(page: Page) -> bool:
     # What idiot made this line necessary by building quotation-mark escaping
     # into {{rfd2}}?  Oh right.  Me.
     anchor = page_title.replace('"', "&quot;").removeprefix(":")
-    filed = f'*<span id="{anchor}">' in rfd.text
+    filed = (f'<span id="{anchor}">' in rfd.text
+             or re.search(fr"={{4}} *{page_title.removeprefix(':')} *={{4}}",
+                          rfd.text))
     if not filed:
         print(f"RfD not filed for {page_title}.")
         utils.log_local(page_title, "rfd_not_filed.txt")
         if now - page.editTime() > dt.timedelta(minutes=30):
-            _onwiki_logger.log(_Messages.RFD1, page_title, now,
-                               rfd=rfd_title)
+            _onwiki_logger.log(_Messages.RFD1, page_title, now, rfd=rfd_title)
     elif ("Wikipedia:Redirects for discussion"
           not in [i.title() for i in rfd.embeddedin()]):
         print(f"{rfd_title} not transcluded to main RfD page.")
@@ -134,7 +137,17 @@ def _extract_rfd(page: Page) -> Title:
                  f"Redirects for discussion/Log/{year} {month} {day}")
 
 
-def cleanup() -> None:
-    """Public wrapper for `_onwiki_logger.cleanup()`."""
-    if _onwiki_logger.cleanup():
-        print("Cleaning up RfD log on-wiki")
+def cleanup(unreviewed_titles: list[str]) -> None:
+    """Remove old and resolved log entries.
+
+    Returns:
+      A bool indicating whether cleanup occurred.
+    """
+    with _onwiki_logger.edit("Removing old and/or reviewed entries.") as data:
+        for day, entries in data.items():
+            if _onwiki_logger.day_too_old(day):
+                del data[day]
+            else:
+                for idx, entry in enumerate(entries):
+                    if entry['page'] not in unreviewed_titles:
+                        del data[day][idx]

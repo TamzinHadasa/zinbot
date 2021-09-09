@@ -5,7 +5,7 @@
 import json
 from json.decoder import JSONDecodeError
 import time
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, Optional
 
 import pywikibot as pwb
 from pywikibot import Page, Timestamp
@@ -54,7 +54,8 @@ class APIError(Exception):
 
 
 def _request(methodname: Literal['get', 'post'],
-             **kwargs: RequestParams) -> Any:
+             params: Optional[RequestParams] = None,
+             data: RequestParams | str = "") -> Any:
     """Error handling and JSON conversion for API functions.
 
     Routes requests through _session, which is defined privately in
@@ -77,18 +78,19 @@ def _request(methodname: Literal['get', 'post'],
       APIError (native):  API Response included a status > 400 or an
         'error' field in its JSON.
     """
+    params = params or {}
     method: Callable[..., Response] = getattr(_session, methodname)
     # Can raise requests.HTTPError
-    response = method(constants.API_URL, **kwargs)
+    response = method(constants.API_URL, params=params, data=data)
     if not response:  # status code > 400
         raise APIError(f"{response.status_code=}", response.content)
     try:
-        data = response.json()
+        response_data = response.json()
     except JSONDecodeError as e:
         raise APIError("No JSON found.", response.content) from e
-    if 'error' in data:
-        raise APIError("'error' field in response.", data)
-    return data
+    if 'error' in response_data:
+        raise APIError("'error' field in response.", response_data)
+    return response_data
 
 
 def get(params: RequestParams) -> Any:
@@ -125,9 +127,12 @@ def post(params: RequestParams, tokentype: TokenType = 'csrf') -> Any:
     Returns / Raises:
       See `_request` documentation.
     """
-    response = _request('post',
-                        params={'format': 'json', **params},
-                        data={'token': get_token(tokentype)})
+    response = _request(
+        'post',
+        data={'format': 'json',
+              'token': get_token(tokentype),
+              **params}
+    )
     time.sleep(10)
     return response
 

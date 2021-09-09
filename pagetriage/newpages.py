@@ -24,11 +24,13 @@ def checkqueue() -> None:
 
     Uses `_buildqueue`, set to 'showdeleted' mode.
     """
+    unreviewed_titles = []
     queue = _buildqueue(['showdeleted'])
     # The practical limit on this is that, if there's some unforeseen
     # situation that can cause an infinite loop, the resulting HTTP 429
     # response would halt the bot as provided for in `api._request`.
     while True:
+        unreviewed_titles += [i['title'] for i in queue]
         for page in queue:
             page = api.get_page(page['title'])
             if rfd.check_rfd(page):
@@ -51,7 +53,7 @@ def checkqueue() -> None:
             break
         queue = newqueue
     print("Queue complete. Checking if log cleanup is necessary.")
-    rfd.cleanup()
+    rfd.cleanup(unreviewed_titles)
 
 
 def _buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
