@@ -3,7 +3,7 @@ __author__ = "Tamzin Hadasa Kelly"
 __copyright__ = "Copyright 2021, Tamzin Hadasa Kelly"
 __license__ = "The MIT License"
 __email__ = "coding@tamz.in"
-__version__ = "1.2.3"
+__version__ = "1.2.4"
 
 import time
 

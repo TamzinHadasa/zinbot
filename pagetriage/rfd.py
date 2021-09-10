@@ -15,7 +15,7 @@ import mwparserfromhell as mwph
 from pywikibot import Page
 
 import api
-from classes import Namespace, Title, ZBError
+from classes import Namespace, SensitiveList, Title, ZBError
 import logging_
 from logging_ import OnWikiLogger
 
@@ -144,12 +144,17 @@ def cleanup(unreviewed_titles: list[str]) -> None:
     Returns:
       A bool indicating whether cleanup occurred.
     """
-    # pylint: disable=unnecessary-dict-index-lookup
     with _onwiki_logger.edit("Removing old and/or reviewed entries.") as data:
-        for day, entries in data.items():
+        for day, entries in data.copy().items():
             if _onwiki_logger.day_too_old(day):
                 del data[day]
             else:
-                for idx, entry in enumerate(entries):
-                    if entry['page'] not in unreviewed_titles:
-                        del data[day][idx]
+                entries = SensitiveList(
+                    [i for i in entries if i['page'] in unreviewed_titles]
+                )
+                if not entries:
+                    del data[day]
+                else:
+                    data[day] = entries
+        if data.been_changed():
+            print("Cleaning up skippedRfDs.json")

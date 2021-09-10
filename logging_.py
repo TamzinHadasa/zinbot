@@ -11,7 +11,7 @@ import api
 import constants
 from classes import Event, Namespace, SensitiveDict, SensitiveList, Title
 
-LoggerData = SensitiveDict[str, list[Event]]
+LoggerData = SensitiveDict[str, SensitiveList[Event]]
 
 
 class OnWikiLogger:
@@ -104,7 +104,7 @@ class OnWikiLogger:
                 return  # Skip if already logged.
             now = api.site_time().strftime(self._dateformat)
             if now not in data:
-                data[now] = []
+                data[now] = SensitiveList([])
             data[now].append({
                 'page': page,
                 'code': message.name,

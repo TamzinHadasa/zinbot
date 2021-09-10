@@ -1,7 +1,7 @@
 """Utility functions."""
 from enum import IntEnum
 import urllib.parse
-from typing import Any, Optional, TypeVar, TypedDict
+from typing import Any, Optional, SupportsIndex, TypeVar, TypedDict
 
 from pywikibot import Page
 
@@ -147,9 +147,13 @@ class SensitiveDict(SensitivityMixin, dict[KT, VT]):
         return super().__delitem__(v)
 
 
-class SensitiveList(SensitivityMixin, list[Any]):
+class SensitiveList(SensitivityMixin, list[T]):
     """List that knows whether it's been updated since initialization."""
 
-    def append(self, item: object) -> None:
+    def append(self, item: T) -> None:
         self._changed = True
         super().append(item)
+
+    def __delitem__(self, v: SupportsIndex | slice) -> None:
+        self._changed = True
+        return super().__delitem__(v)
