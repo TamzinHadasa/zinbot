@@ -15,8 +15,9 @@ import mwparserfromhell as mwph
 from pywikibot import Page
 
 import api
-import utils
-from utils import Namespace, OnWikiLogger, Title, ZBError
+from classes import Namespace, Title, ZBError
+import logging_
+from logging_ import OnWikiLogger
 
 FiledCheck = Union[bool, re.Match[Any], None]
 # This is only guaranteed to match the output of {{subst:rfd}}.  If for
@@ -89,7 +90,7 @@ def _check_filed(page: Page) -> FiledCheck:
                            must_exist=True)
     except ZBError:
         print(f"No RfD page for {page_title}.")
-        utils.log_local(page_title, "no_rfd_logpage.txt")
+        logging_.log_local(page_title, "no_rfd_logpage.txt")
         _onwiki_logger.log(_Messages.RFD0, page_title, now, rfd=rfd_title)
         return False
 
@@ -101,13 +102,13 @@ def _check_filed(page: Page) -> FiledCheck:
                           rfd.text))
     if not filed:
         print(f"RfD not filed for {page_title}.")
-        utils.log_local(page_title, "rfd_not_filed.txt")
+        logging_.log_local(page_title, "rfd_not_filed.txt")
         if now - page.editTime() > dt.timedelta(minutes=30):
             _onwiki_logger.log(_Messages.RFD1, page_title, now, rfd=rfd_title)
     elif ("Wikipedia:Redirects for discussion"
           not in [i.title() for i in rfd.embeddedin()]):
         print(f"{rfd_title} not transcluded to main RfD page.")
-        utils.log_local(page_title, "rfd_log_not_transcluded.txt")
+        logging_.log_local(page_title, "rfd_log_not_transcluded.txt")
         _onwiki_logger.log(_Messages.RFD2, page_title, now, rfd=rfd_title)
         return False
     return filed
@@ -143,6 +144,7 @@ def cleanup(unreviewed_titles: list[str]) -> None:
     Returns:
       A bool indicating whether cleanup occurred.
     """
+    # pylint: disable=unnecessary-dict-index-lookup
     with _onwiki_logger.edit("Removing old and/or reviewed entries.") as data:
         for day, entries in data.items():
             if _onwiki_logger.day_too_old(day):

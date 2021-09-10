@@ -11,9 +11,9 @@ import pywikibot as pwb
 from pywikibot import Page, Timestamp
 from requests import Response
 
+from classes import ZBError
 import config
 import constants
-from utils import ZBError
 
 _session = config.zb.session()
 # To avoid calling anew each time `getpage` is called.  Cached
