@@ -1,23 +1,15 @@
 """Functions for interacting with the NewPagesFeed."""
-from enum import Enum
 from typing import Any, Literal
 
 from pywikibot import Page
 
 import api
 from api import RequestParams
-from classes import Namespace, Title, ZBError
+from classes import Namespace, ZBError
 import logging_
-from logging_ import OnWikiLogger
 from pagetriage import rfd
 
 Queue = list[dict[str, Any]]
-_onwiki_logger = OnWikiLogger("mockReviews.json",
-                              (Namespace.USER, "'zinbot/trial/1/"))
-
-
-class _Messages(Enum):
-    REV0 = "Would have reviewed this if enabled."
 
 
 def checkqueue() -> None:
@@ -36,7 +28,7 @@ def checkqueue() -> None:
             page = api.get_page(page['title'])
             if rfd.check_rfd(page):
                 print(f"MATCH on {page=}")
-                _mock_review(page)
+                _review(page)
             else:
                 print(f"No match on {page=}")
         try:
@@ -98,10 +90,3 @@ def _review(page: Page) -> None:
               'skipnotif': True})  # May change based on community's feelings.
     print(f"Reviewed {page_title}")
     logging_.log_local(page_title, "reviewedpages.txt")
-
-
-def _mock_review(page: Page) -> None:
-    page_title = Title.from_page(page)
-    _onwiki_logger.log(_Messages.REV0, page_title, api.site_time())
-    print(f"Mock-reviewed {page_title}")
-    logging_.log_local(page_title, "mockreviewedpages.txt")
