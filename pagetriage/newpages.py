@@ -5,7 +5,7 @@ from pywikibot import Page
 
 import api
 from api import RequestParams
-from classes import Namespace, ZBError
+from classes import Namespace, Title, ZBError
 import logging_
 from pagetriage import rfd
 
@@ -83,7 +83,7 @@ def _review(page: Page) -> None:
     Arg:
       page:  A Page representing a wikipage to patrol.
     """
-    page_title = page.title()
+    page_title = Title.from_page(page)
     api.post({'action': 'pagetriageaction',
               'pageid': page.pageid,
               'reviewed': 1,
