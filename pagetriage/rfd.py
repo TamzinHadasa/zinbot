@@ -150,7 +150,8 @@ def cleanup(unreviewed_titles: list[str]) -> None:
                 del data[day]
             else:
                 entries = SensitiveList(
-                    [i for i in entries if i['page'] in unreviewed_titles]
+                    [i for i in entries
+                     if i['page'].removeprefix(":") in unreviewed_titles]
                 )
                 if not entries:
                     del data[day]

@@ -139,7 +139,8 @@ class SensitiveDict(SensitivityMixin, dict[KT, VT]):
     """Dict that knows whether it's been updated since initialization."""
 
     def __setitem__(self, k: KT, v: VT) -> None:
-        self._changed = True
+        if self.get(k) != v:
+            self._changed = True
         return super().__setitem__(k, v)
 
     def __delitem__(self, v: KT) -> None:
