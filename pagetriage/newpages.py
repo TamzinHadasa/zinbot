@@ -24,13 +24,15 @@ def checkqueue() -> None:
     # response would halt the bot as provided for in `api._request`.
     while True:
         unreviewed_titles += [i['title'] for i in queue]
-        for page in queue:
-            page = api.get_page(page['title'])
+        for page_data in queue:
+            page_title = page_data['title']
+            page = api.get_page(page_title)
             if rfd.check_rfd(page):
-                print(f"MATCH on {page=}")
+                print(f"***MATCH*** on {page_title=}")
                 _review(page)
+                unreviewed_titles.remove(page_title)
             else:
-                print(f"No match on {page=}")
+                print(f"No match on {page_title=}")
         try:
             last: int = queue[-1]['creation_date']
         except KeyError as e:  # Unlikely to ever happen but...
@@ -78,10 +80,10 @@ def _buildqueue(show: list[Literal['showredirs', 'showdeleted', 'showothers']],
 
 
 def _review(page: Page) -> None:
-    """Patrol a page using PageTriage.
+    """Review a page using PageTriage.
 
     Arg:
-      page:  A Page representing a wikipage to patrol.
+      page:  A Page representing a wikipage to review.
     """
     page_title = Title.from_page(page)
     api.post({'action': 'pagetriageaction',
