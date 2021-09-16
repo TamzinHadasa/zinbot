@@ -12,10 +12,18 @@ from pagetriage import rfd
 Queue = list[dict[str, Any]]
 
 
+class QueueError(ZBError):
+    """Error raised in interacting with the queue."""
+
+
 def checkqueue() -> None:
     """Loop through NewPagesFeed, 200 items at a time.
 
     Uses `_buildqueue`, set to 'showdeleted' mode.
+
+    Raises:
+      QueueError if for some reason an entry does not have a creation
+      date.
     """
     unreviewed_titles = []
     queue = _buildqueue(['showdeleted'])
@@ -36,7 +44,7 @@ def checkqueue() -> None:
         try:
             last: int = queue[-1]['creation_date']
         except KeyError as e:  # Unlikely to ever happen but...
-            raise ZBError("No 'creation_date' on last entry") from e
+            raise QueueError("No 'creation_date' on last entry") from e
         # Intentionally starts next queue on final timestamp, not 1 past
         # it, since timestamps are non-unique.  Repeating is harmless,
         # as long as we account for the fact that `newqueue` will thus

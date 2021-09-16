@@ -15,7 +15,8 @@ import mwparserfromhell as mwph
 from pywikibot import Page
 
 import api
-from classes import Namespace, SensitiveList, Title, ZBError
+from api import PageNotFoundError
+from classes import Namespace, SensitiveList, Title
 import logging_
 from logging_ import OnWikiLogger
 
@@ -114,7 +115,7 @@ def _check_filed(page: Page) -> FiledCheck:
         rfd = api.get_page(title=rfd_title.pagename,
                            ns=rfd_title.namespace,
                            must_exist=True)
-    except ZBError:
+    except PageNotFoundError:
         print(f"No RfD page for {page_title}.")
         logging_.log_local(page_title, "no_rfd_logpage.txt")
         _onwiki_logger.log(_Messages.RFD0, page_title, now, rfd=rfd_title)
@@ -126,13 +127,13 @@ def _check_filed(page: Page) -> FiledCheck:
     filed = (f'<span id="{anchor}">' in rfd.text
              or re.search(fr"={{4}} *{page_title.removeprefix(':')} *={{4}}",
                           rfd.text))
+    transcluders = [i.title() for i in rfd.embeddedin()]
     if not filed:
         print(f"RfD not filed for {page_title}.")
         logging_.log_local(page_title, "rfd_not_filed.txt")
         if now - page.editTime() > dt.timedelta(minutes=30):
             _onwiki_logger.log(_Messages.RFD1, page_title, now, rfd=rfd_title)
-    elif ("Wikipedia:Redirects for discussion"
-          not in [i.title() for i in rfd.embeddedin()]):
+    elif "Wikipedia:Redirects for discussion" not in transcluders:
         print(f"{rfd_title} not transcluded to main RfD page.")
         logging_.log_local(page_title, "rfd_log_not_transcluded.txt")
         _onwiki_logger.log(_Messages.RFD2, page_title, now, rfd=rfd_title)

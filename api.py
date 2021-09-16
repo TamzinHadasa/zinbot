@@ -24,9 +24,10 @@ RequestParams = dict[str, object]
 # Till then, best for base JSON functions to return Any while calling
 # functions and annotate specific return types.
 # ResponseJSON = dict[str, 'ResponseJSON'] | list['ResponseJSON']
-TokenType = Literal['createaccount', 'csrf', 'deleteglobalaccount', 'login',
-                    'patrol', 'rollback', 'setglobalaccountstatus',
-                    'userrights', 'watch']
+TokenType = Literal[
+    'createaccount', 'csrf', 'deleteglobalaccount', 'login', 'patrol',
+    'rollback', 'setglobalaccountstatus', 'userrights', 'watch'
+]
 
 
 class APIError(Exception):
@@ -51,6 +52,14 @@ class APIError(Exception):
             except TypeError:
                 with open("logs/APIError.txt", 'w', encoding='utf-8') as f:
                     f.write(str(event))
+
+
+class NoTokenError(ZBError):
+    """Exception raised when `get_token` does not get a token."""
+
+
+class PageNotFoundError(ZBError):
+    """Exception raised by `get_page` when a page does not exist."""
 
 
 def _request(methodname: Literal['get', 'post'],
@@ -148,7 +157,7 @@ def get_token(tokentype: TokenType = 'csrf') -> str:
 
     Raises:
       APIError from KeyError:  If the query response has no token field.
-      ZBError:  If the token field is "empty" (just "+\\")
+      NoTokenError:  If the token field is "empty" (just "+\\")
     """
     query = get({'action': 'query',
                  'meta': 'tokens',
@@ -159,7 +168,7 @@ def get_token(tokentype: TokenType = 'csrf') -> str:
     except KeyError as e:
         raise APIError("No token obtained.", query) from e
     if token == R"+\\":
-        raise ZBError("Empty token.")
+        raise NoTokenError("Empty token.")
     return token
 
 
@@ -177,11 +186,11 @@ def get_page(title: str, ns: int = 0, must_exist: bool = False) -> Page:
       nonexistent (if not `must_exist`).
 
     Raises:
-      ZBError:  If `must_exist` but the page does not exist.
+      PageNotFoundError:  If `must_exist` but the page does not exist.
     """
     page = Page(_site, title=title, ns=ns)
     if must_exist and not page.exists():
-        raise ZBError("Page does not exist")
+        raise PageNotFoundError("Page does not exist")
     return page
 
 

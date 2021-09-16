@@ -11,11 +11,11 @@ VT = TypeVar('VT')
 
 
 class ZBError(Exception):
-    """Generic exception for errors specific to 'zinbot's behavior."""
+    """Base custom exception."""
 
 
 class Event(TypedDict):
-    """Structure of a logged event"""
+    """Structure of a logged event."""
     page: str
     code: str
     message: str
