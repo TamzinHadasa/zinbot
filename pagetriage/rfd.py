@@ -9,9 +9,10 @@ logged as such on-wiki.
 import datetime as dt
 from enum import Enum
 import re
-from typing import Any, Union
+from typing import Literal, Union
 
 import mwparserfromhell as mwph
+from mwparserfromhell.nodes import Heading, Tag
 from pywikibot import Page
 
 import api
@@ -20,7 +21,7 @@ from classes import Namespace, SensitiveList, Title
 import logging_
 from logging_ import OnWikiLogger
 
-FiledCheck = Union[bool, re.Match[Any], None]
+FiledCheck = Union[Literal[False], list[Tag]]
 # This is only guaranteed to match the output of {{subst:rfd}}.  If for
 # some reason someone manually added the subst'd output and changed with
 # the spacing, it would not read as a match.  This can be changed if
@@ -55,7 +56,7 @@ class _Messages(Enum):
     RFD3 = "[[{page}]] tagged with {{{{Rfd-NPF/core}}}} directly."
 
 
-def check_rfd(page: Page) -> FiledCheck:
+def check_rfd(page: Page) -> bool | FiledCheck:
     """Check if a page is subject to an ongoing RfD.
 
     First checks for the {{subst:rfd}} tag, then for whether there's an
@@ -124,10 +125,17 @@ def _check_filed(page: Page) -> FiledCheck:
     # What idiot made this line necessary by building quotation-mark escaping
     # into {{rfd2}}?  Oh right.  Me.
     anchor = page_title.replace('"', "&quot;").removeprefix(":")
-    filed = (f'<span id="{anchor}">' in rfd.text
-             or re.search(fr"={{4}} *{page_title.removeprefix(':')} *={{4}}",
-                          rfd.text))
+    parsed = mwph.parse(rfd.text)
+    filed: list[Tag] | list[Heading] = (
+        parsed.filter_headings(
+            matches=lambda heading: _compress_ws(heading.title) == anchor
+        )
+        or parsed.filter_tags(
+            matches=lambda tag: _is_correct_anchor(tag, anchor)
+        )
+    )
     transcluders = [i.title() for i in rfd.embeddedin()]
+
     if not filed:
         print(f"RfD not filed for {page_title}.")
         logging_.log_local(page_title, "rfd_not_filed.txt")
@@ -163,6 +171,22 @@ def _extract_rfd(page: Page) -> Title:
                         for s in ("year", "month", "day"))
     return Title(Namespace.PROJECT,
                  f"Redirects for discussion/Log/{year} {month} {day}")
+
+
+def _is_correct_anchor(tag: Tag, target: str) -> bool:
+    if tag.tag != 'span':
+        return False
+    try:
+        # `strip('"')` could obscure HTML errors
+        id_ = (tag.get('id').split("=", maxsplit=1)[1]
+               .removeprefix('"').removesuffix('"'))
+    except ValueError:  # If span has no id.
+        return False
+    return _compress_ws(id_) == target
+
+
+def _compress_ws(text: str) -> str:
+    return " ".join(text.split())
 
 
 def cleanup(unreviewed_titles: list[str]) -> None:
