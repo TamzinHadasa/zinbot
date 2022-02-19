@@ -5,17 +5,20 @@
 import json
 from json.decoder import JSONDecodeError
 import time
-from typing import Any, Callable, Literal, Optional, Union
+from typing import Any, Callable, Literal, Optional
 
+import pywikibot as pwb
+from pywikibot import Page, Timestamp
 from requests import Response
 
 from classes import ZBError
 import config
+import constants
 
- # TODO allow customization by command line
-_session = config.DEFAULT_USER.session() 
+_session = config.zb.session()
 # To avoid calling anew each time `getpage` is called.  Cached
 # regardless but still better to avoid repeat calls.
+_site = pwb.Site('en')
 RequestParams = dict[str, object]
 # Awaiting resolution of <https://github.com/python/mypy/issues/731>.
 # Till then, best for base JSON functions to return Any while calling
@@ -61,8 +64,7 @@ class PageNotFoundError(ZBError):
 
 def _request(methodname: Literal['get', 'post'],
              params: Optional[RequestParams] = None,
-             data: Union[RequestParams | str] = "",
-             site: str = config.DEFAULT_SITE) -> Any:
+             data: RequestParams | str = "") -> Any:
     """Error handling and JSON conversion for API functions.
 
     Routes requests through _session, which is defined privately in
@@ -88,7 +90,7 @@ def _request(methodname: Literal['get', 'post'],
     params = params or {}
     method: Callable[..., Response] = getattr(_session, methodname)
     # Can raise requests.HTTPError
-    response = method(f"https://{site}.org/w/api.php?", params=params, data=data)
+    response = method(constants.API_URL, params=params, data=data)
     if not response:  # status code > 400
         raise APIError(f"{response.status_code=}", response.content)
     try:
@@ -100,7 +102,7 @@ def _request(methodname: Literal['get', 'post'],
     return response_data
 
 
-def get(params: RequestParams, site=config.DEFAULT_SITE) -> Any:
+def get(params: RequestParams) -> Any:
     """Send GET request within the OAuth-signed session.
 
     Automatically specifies output in JSON (overridable).
@@ -111,12 +113,10 @@ def get(params: RequestParams, site=config.DEFAULT_SITE) -> Any:
     Returns / Raises:
       See `_request` documentation.
     """
-    return _request('get', params={'format': 'json', **params}, site=site)
+    return _request('get', params={'format': 'json', **params})
 
 
-def post(params: RequestParams,
-         tokentype: TokenType = 'csrf',
-         site: str = config.DEFAULT_SITE) -> Any:
+def post(params: RequestParams, tokentype: TokenType = 'csrf') -> Any:
     """Send POST request within the OAuth-signed session.
 
     Automatically specifies output in JSON (overridable), and sets the
@@ -139,15 +139,14 @@ def post(params: RequestParams,
     response = _request(
         'post',
         data={'format': 'json',
-              'token': get_token(tokentype, site=site),
-              **params},
-        site=site
+              'token': get_token(tokentype),
+              **params}
     )
     time.sleep(10)
     return response
 
 
-def get_token(tokentype: TokenType = 'csrf', site=config.DEFAULT_SITE) -> str:
+def get_token(tokentype: TokenType = 'csrf') -> str:
     R"""Request a token (CSRF by default) from the MediaWiki API.
 
     Args:
@@ -162,39 +161,39 @@ def get_token(tokentype: TokenType = 'csrf', site=config.DEFAULT_SITE) -> str:
     """
     query = get({'action': 'query',
                  'meta': 'tokens',
-                 'type': tokentype},
-                site=site)
+                 'type': tokentype})
     try:
         # How MW names all tokens:
         token: str = query['query']['tokens'][tokentype + 'token']
     except KeyError as e:
         raise APIError("No token obtained.", query) from e
-    print(token)
     if token == R"+\\":
         raise NoTokenError("Empty token.")
     return token
 
 
-def rollback(page_id: int,
-             summary="",
-             markbot: bool = False,
-             site: str = config.DEFAULT_SITE) -> Any:
-    user_id_query = get({'action': 'query',
-                         'prop': 'revisions',
-                         'pageids': page_id,
-                         'rvprop': 'userid',
-                         'rvlimit': 1},
-                        site=site)
-    try:
-         user_id: str = user_id_query['query']['pages'][str(page_id)][
-            'revisions'][0]['userid']
-    except KeyError as e:
-        raise APIError("No token obtained.", user_id_query) from e
-    response = post(params={'action': 'rollback',
-                            'pageid': page_id,
-                            'user': "#" + str(user_id),
-                            'summary': summary,
-                            'markbot': markbot},
-                    tokentype='rollback',
-                    site=site)
-    return response
+def get_page(title: str, ns: int = 0, must_exist: bool = False) -> Page:
+    """Wrapper for Page(), with optional existence check.
+
+    Does not guarantee that page actually exists; check with .exists().
+
+    Args:
+      title:  A str matching a valid wikipage title.
+      ns:  An int of the MW-defined number for the page's namespace.
+
+    Returns:
+      A Page with title `title` in namespace with number `ns`, possibly
+      nonexistent (if not `must_exist`).
+
+    Raises:
+      PageNotFoundError:  If `must_exist` but the page does not exist.
+    """
+    page = Page(_site, title=title, ns=ns)
+    if must_exist and not page.exists():
+        raise PageNotFoundError("Page does not exist")
+    return page
+
+
+def site_time() -> Timestamp:
+    """Wrapper for site server time."""
+    return _site.server_time()

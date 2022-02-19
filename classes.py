@@ -3,6 +3,8 @@ from enum import IntEnum
 import urllib.parse
 from typing import Any, Optional, SupportsIndex, TypeVar, TypedDict
 
+from pywikibot import Page
+
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
@@ -83,6 +85,18 @@ class Title(str):
       subpage:  A str of the subpage component.
       as_url:  A str of the Title in URL-compatible format.
     """
+    @staticmethod
+    def from_page(page: Page) -> 'Title':
+        """Create a Title based on a pywikibot.Page.
+
+        Args:
+          page:  A pywikibot.Page.
+
+        Returns:
+          A Title drawn from the page's title and namespace ID.
+        """
+        return Title(Namespace(page.namespace().id), page.title())
+
     def __new__(cls, namespace: Namespace, pagename: str) -> 'Title':
         """Construct a Title.
 
@@ -104,7 +118,6 @@ class Title(str):
         self.as_url = urllib.parse.quote(self)
 
 
-# TODO: Not this.
 class SensitivityMixin:  # pylint: disable=too-few-public-methods
     """Make object aware of whether it or its members have been changed."""
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -142,6 +155,6 @@ class SensitiveList(SensitivityMixin, list[T]):
         self._changed = True
         super().append(item)
 
-    def __delitem__(self, v):#: SupportsIndex | slice) -> None:
+    def __delitem__(self, v: SupportsIndex | slice) -> None:
         self._changed = True
         return super().__delitem__(v)
