@@ -15,7 +15,7 @@ from classes import ZBError
 import config
 import constants
 
-_session = config.zb.session()
+_session = config.tamzin.session()
 # To avoid calling anew each time `getpage` is called.  Cached
 # regardless but still better to avoid repeat calls.
 _site = pwb.Site('en')
@@ -192,6 +192,24 @@ def get_page(title: str, ns: int = 0, must_exist: bool = False) -> Page:
     if must_exist and not page.exists():
         raise PageNotFoundError("Page does not exist")
     return page
+
+
+def rollback(page_id: int, markbot: bool = False) -> Any:
+  user_id_query = get({'action': 'query',
+                       'prop': 'revisions',
+                       'rvprop': 'userid',
+                       'rvlimit': 1})
+  try:
+    user_id: str = user_id_query['query']['pages'][str(page_id)][
+      'revisions'][0]['userid']
+  except KeyError as e:
+      raise APIError("No token obtained.", user_id_query) from e
+  response = post(params={'action': 'rollback',
+                          'pageid': page_id,
+                          'user': "#" + user_id,
+                          'markbot': markbot},
+                  tokentype='rollback')
+  return response
 
 
 def site_time() -> Timestamp:
