@@ -9,3 +9,4 @@ mypy.ini
 config.py
 pywikibot.lwp
 throttle.ctrl
+venv/

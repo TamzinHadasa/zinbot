@@ -15,6 +15,8 @@ from classes import ZBError
 import config
 import constants
 
+from typing import Union
+
 _session = config.zb.session()
 # To avoid calling anew each time `getpage` is called.  Cached
 # regardless but still better to avoid repeat calls.
@@ -64,7 +66,7 @@ class PageNotFoundError(ZBError):
 
 def _request(methodname: Literal['get', 'post'],
              params: Optional[RequestParams] = None,
-             data: RequestParams | str = "") -> Any:
+             data: Union[RequestParams, str] = "") -> Any:
     """Error handling and JSON conversion for API functions.
 
     Routes requests through _session, which is defined privately in

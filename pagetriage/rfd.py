@@ -21,6 +21,8 @@ from classes import Namespace, SensitiveList, Title
 import logging_
 from logging_ import OnWikiLogger
 
+from typing import Union
+
 FiledCheck = Union[Literal[False], list[Tag]]
 # This is only guaranteed to match the output of {{subst:rfd}}.  If for
 # some reason someone manually added the subst'd output and changed with
@@ -56,7 +58,7 @@ class _Messages(Enum):
     RFD3 = "[[{page}]] tagged with {{{{Rfd-NPF/core}}}} directly."
 
 
-def check_rfd(page: Page) -> bool | FiledCheck:
+def check_rfd(page: Page) -> Union[bool, FiledCheck]:
     """Check if a page is subject to an ongoing RfD.
 
     First checks for the {{subst:rfd}} tag, then for whether there's an
@@ -126,7 +128,7 @@ def _check_filed(page: Page) -> FiledCheck:
     # into {{rfd2}}?  Oh right.  Me.
     anchor = page_title.replace('"', "&quot;").removeprefix(":")
     parsed = mwph.parse(rfd.text)
-    filed: list[Tag] | list[Heading] = (
+    filed: Union[list[Tag], list[Heading]] = (
         parsed.filter_headings(
             matches=lambda heading: _compress_ws(heading.title) == anchor
         )
