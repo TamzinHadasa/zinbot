@@ -5,6 +5,8 @@ from typing import Any, Optional, SupportsIndex, TypeVar, TypedDict
 
 from pywikibot import Page
 
+from typing import Union
+
 T = TypeVar('T')
 KT = TypeVar('KT')
 VT = TypeVar('VT')
@@ -155,6 +157,6 @@ class SensitiveList(SensitivityMixin, list[T]):
         self._changed = True
         super().append(item)
 
-    def __delitem__(self, v: SupportsIndex | slice) -> None:
+    def __delitem__(self, v: Union[SupportsIndex, slice]) -> None:
         self._changed = True
         return super().__delitem__(v)
