@@ -3,9 +3,7 @@ __author__ = "Tamzin Hadasa Kelly"
 __copyright__ = "Copyright 2021-2024, Tamzin Hadasa Kelly"
 __license__ = "The MIT License"
 __email__ = "coding@tamz.in"
-__version__ = "1.4.4"
-
-import time
+__version__ = "1.5.0"
 
 import api
 import pagetriage.newpages
@@ -19,7 +17,5 @@ def run() -> None:
 
 if __name__ == "__main__":
     print(f"RUNNING (version {__version__})")
-    while True:
-        run()
-        print(f"{api.site_time()}: Run done. Sleeping.")
-        time.sleep(1800)
+    run()
+    print(f"{api.site_time()}: Run done. Sleeping.")
