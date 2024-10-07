@@ -1,9 +1,9 @@
 """Runs 'zinbot."""
 __author__ = "Tamzin Hadasa Kelly"
-__copyright__ = "Copyright 2021, Tamzin Hadasa Kelly"
+__copyright__ = "Copyright 2021–2024, Tamzin Hadasa Kelly"
 __license__ = "The MIT License"
 __email__ = "coding@tamz.in"
-__version__ = "1.4.3"
+__version__ = "1.4.4"
 
 import time
 
@@ -11,8 +11,8 @@ import pagetriage.newpages
 
 
 def run() -> None:
-    """Run the bot's tasks that are currently approved / in trial."""
-    pagetriage.newpages.checkqueue()  # trial
+    """Run the bot's tasks."""
+    pagetriage.newpages.checkqueue()
 
 
 if __name__ == "__main__":

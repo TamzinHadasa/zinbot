@@ -53,7 +53,7 @@ class _Messages(Enum):
     RFD1 = "[[{page}]] not filed to [[{rfd}]]."
     RFD2 = ("[[{page}]] filed to [[{rfd}]], but that log page has "
             "not been transcluded to main RfD page.")
-    RFD3 = "[[{page}]] tagged with {{{{Rfd-NPF/core}}}} directly."
+    RFD3 = "{{{{Rfd-NPF}}}}, not currently supported."
 
 
 def check_rfd(page: Page) -> bool | FiledCheck:
@@ -166,7 +166,7 @@ def _extract_rfd(page: Page) -> Title:
     # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
     text = page.text.replace("<includeonly>safesubst:</includeonly>", "")
     parsed = mwph.parse(text)
-    template = parsed.filter_templates()[0]
+    template = parsed.filter_templates()[1]
     year, month, day = (template.get(s).value.strip()
                         for s in ("year", "month", "day"))
     return Title(Namespace.PROJECT,
