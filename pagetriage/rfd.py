@@ -32,7 +32,7 @@ FiledCheck = Union[Literal[False], list[Tag]]
 # probably be speedily resolved).
 # pylint: disable=line-too-long
 _TAGGED = re.compile(
-    r"""\{\{<includeonly>safesubst:</includeonly>\#invoke:RfD(\|.*?){3}month = \w+
+    r"""\{\{NOINDEX\}\}\{\{<includeonly>safesubst:</includeonly>\#invoke:RfD(\|.*?){3}month = \w+
 \|day = [ \d]\d
 \|year = \d{4}
 \|time = \d{2}:\d{2}
