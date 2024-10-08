@@ -11,11 +11,11 @@ import pagetriage.newpages
 
 def run() -> None:
     """Run the bot's tasks."""
-    print(f"Site time is {api.site_time()}")
     pagetriage.newpages.checkqueue()
 
 
 if __name__ == "__main__":
     print(f"RUNNING (version {__version__})")
+    print(f"{api.site_time()}: Starting run.")
     run()
-    print(f"{api.site_time()}: Run done. Sleeping.")
+    print(f"{api.site_time()}: Run done.")
