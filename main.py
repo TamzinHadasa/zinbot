@@ -3,7 +3,7 @@ __author__ = "Tamzin Hadasa Kelly"
 __copyright__ = "Copyright 2021-2024, Tamzin Hadasa Kelly"
 __license__ = "The MIT License"
 __email__ = "coding@tamz.in"
-__version__ = "1.5.0"
+__version__ = "1.5.0-bugfix-0"
 
 import api
 import pagetriage.newpages

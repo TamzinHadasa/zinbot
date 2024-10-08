@@ -7,8 +7,7 @@ from json.decoder import JSONDecodeError
 import time
 from typing import Any, Callable, Literal, Optional
 
-import pywikibot as pwb
-from pywikibot import Page, Timestamp
+from pywikibot import Page, Site, Timestamp
 from requests import Response
 
 from classes import ZBError
@@ -18,7 +17,7 @@ import constants
 _session = config.zb.session()
 # To avoid calling anew each time `getpage` is called.  Cached
 # regardless but still better to avoid repeat calls.
-_site = pwb.Site('en')
+_site = Site('en')
 RequestParams = dict[str, object]
 # Awaiting resolution of <https://github.com/python/mypy/issues/731>.
 # Till then, best for base JSON functions to return Any while calling
