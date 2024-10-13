@@ -5,9 +5,7 @@ from enum import Enum
 import json
 from typing import Any, Generator
 
-from pywikibot import Timestamp
-
-import api
+import client
 import constants
 from classes import Event, Namespace, SensitiveDict, SensitiveList, Title
 
@@ -17,7 +15,7 @@ LoggerData = SensitiveDict[str, SensitiveList[Event]]
 class OnWikiLogger:
     """Controls on-wiki logging of events."""
     _dateformat = "%Y-%m-%d"
-    _timestampformat = "%H:%M:%S %Y-%m-%d (UTC)"
+    _timestampformat = "%Y-%m-%d %H:%M:%S (UTC)"
 
     def __init__(
         self,
@@ -52,19 +50,18 @@ class OnWikiLogger:
             ago.
         """
         as_date = dt.datetime.strptime(timestamp, cls._dateformat).date()
-        return api.site_time().date() - as_date > dt.timedelta(days=7)
+        return dt.datetime.now().date() - as_date > dt.timedelta(days=7)
 
     def _load_json(self) -> LoggerData:
-        text = api.get_page(self._logtitle.pagename,
-                            self._logtitle.namespace).text
+        text = client.get_page(self._logtitle.pagename,
+                               self._logtitle.namespace).text() or "{}"
         return SensitiveDict({k: SensitiveList(v)
                               for k, v in json.loads(text).items()})
 
     def _save_json(self, data: LoggerData, summary: str) -> None:
-        api.post({'action': 'edit',
-                  'title': self._logtitle,
-                  'text': json.dumps(data),
-                  'summary': summary})
+        page = client.get_page(self._logtitle.pagename,
+                               self._logtitle.namespace)
+        page.edit(text=json.dumps(data), summary=summary)
 
     @contextmanager
     def edit(self, summary: str) -> Generator[LoggerData, None, None]:
@@ -86,7 +83,6 @@ class OnWikiLogger:
     def log(self,
             message: Enum,
             page: str,
-            timestamp: Timestamp,
             **formatters: Any) -> None:
         """Log an event.
 
@@ -95,21 +91,21 @@ class OnWikiLogger:
             code and the value of which is an error message.
           page:  A str of a page's title, including leading colon for
             mainspace.
-          timestamp:  A pywikibot.Timestamp.
           **formatters:  Objects to pass to the Enum's value for
             formatting.
         """
         with self.edit(f"Logging [[{page}]] (code {message.name})") as data:
             if page in [i['page'] for day in data.values() for i in day]:
                 return  # Skip if already logged.
-            now = api.site_time().strftime(self._dateformat)
-            if now not in data:
-                data[now] = SensitiveList([])
-            data[now].append({
+            now = dt.datetime.now()  # Avoid midnight race condition.
+            today = now.strftime(self._dateformat)
+            if today not in data:
+                data[today] = SensitiveList([])
+            data[today].append({
                 'page': page,
                 'code': message.name,
                 'message': message.value.format(page=page, **formatters),
-                'timestamp': timestamp.strftime(self._timestampformat)
+                'timestamp': now.strftime(self._timestampformat)
             })
 
 

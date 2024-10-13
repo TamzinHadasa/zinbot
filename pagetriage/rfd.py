@@ -11,12 +11,12 @@ from enum import Enum
 import re
 from typing import Literal, Union
 
-import mwparserfromhell as mwph
-from mwparserfromhell.nodes import Heading, Tag
-from pywikibot import Page
+from mwclient.page import Page  # type:ignore[import-untyped]
+import mwparserfromhell as mwph  # type:ignore[import-untyped]
+from mwparserfromhell.nodes import Heading, Tag  # type:ignore[import-untyped]
 
-import api
-from api import PageNotFoundError
+import client
+from client import PageNotFoundError
 from classes import Namespace, SensitiveList, Title
 import logging_
 from logging_ import OnWikiLogger
@@ -56,23 +56,6 @@ class _Messages(Enum):
     RFD3 = "{{{{Rfd-NPF}}}}, not currently supported."
 
 
-def check_rfd(page: Page) -> bool | FiledCheck:
-    """Check if a page is subject to an ongoing RfD.
-
-    First checks for the {{subst:rfd}} tag, then for whether there's an
-    entry at the corresponding RfD log page.
-
-    Arg:
-      page:  A Page corresponding to a wikipage to be checked.
-
-    Returns:
-      A bool, True if both TAGGED matches and checkfiled() returns True.
-      (If the former but not the latter, the distinction is made clear
-      by logs.)
-    """
-    return _check_regexes(page) and _check_filed(page)
-
-
 def _check_regexes(page: Page) -> bool:
     """Check if a page matches RfD-related regexes.
 
@@ -85,12 +68,12 @@ def _check_regexes(page: Page) -> bool:
     Returns:
       A bool of whether the page is tagged with `_TAGGED`.
     """
-    if _TAGGED.match(page.text):
+    if _TAGGED.match(page.text()):
         return True
-    if _DEPRECATED.search(page.text):
+    if _DEPRECATED.search(page.text()):
         page_title = Title.from_page(page)
         print(f"{page_title} is deprecated")
-        _onwiki_logger.log(_Messages.RFD3, page_title, api.site_time())
+        _onwiki_logger.log(_Messages.RFD3, page_title)
     return False
 
 
@@ -109,23 +92,22 @@ def _check_filed(page: Page) -> FiledCheck:
       A bool indicating whether an RfD entry exists matching the page's
       title.
     """
-    now = api.site_time()
     rfd_title = _extract_rfd(page)
     page_title = Title.from_page(page)
     try:
-        rfd = api.get_page(title=rfd_title.pagename,
+        rfd = client.get_page(title=rfd_title.pagename,
                            ns=rfd_title.namespace,
                            must_exist=True)
     except PageNotFoundError:
         print(f"No RfD page for {page_title}.")
         logging_.log_local(page_title, "no_rfd_logpage.txt")
-        _onwiki_logger.log(_Messages.RFD0, page_title, now, rfd=rfd_title)
+        _onwiki_logger.log(_Messages.RFD0, page_title, rfd=rfd_title)
         return False
 
     # What idiot made this line necessary by building quotation-mark escaping
     # into {{rfd2}}?  Oh right.  Me.
     anchor = page_title.replace('"', "&quot;").removeprefix(":")
-    parsed = mwph.parse(rfd.text)
+    parsed = mwph.parse(rfd.text())
     filed: list[Tag] | list[Heading] = (
         parsed.filter_headings(
             matches=lambda heading: _compress_ws(heading.title) == anchor
@@ -139,12 +121,12 @@ def _check_filed(page: Page) -> FiledCheck:
     if not filed:
         print(f"RfD not filed for {page_title}.")
         logging_.log_local(page_title, "rfd_not_filed.txt")
-        if now - page.editTime() > dt.timedelta(minutes=30):
-            _onwiki_logger.log(_Messages.RFD1, page_title, now, rfd=rfd_title)
+        if dt.datetime.now() - page.editTime() > dt.timedelta(minutes=30):
+            _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
     elif "Wikipedia:Redirects for discussion" not in transcluders:
         print(f"{rfd_title} not transcluded to main RfD page.")
         logging_.log_local(page_title, "rfd_log_not_transcluded.txt")
-        _onwiki_logger.log(_Messages.RFD2, page_title, now, rfd=rfd_title)
+        _onwiki_logger.log(_Messages.RFD2, page_title, rfd=rfd_title)
         return False
     return filed
 
@@ -164,7 +146,7 @@ def _extract_rfd(page: Page) -> Title:
       A Title for an RfD log page, without guarantee that the page exists.
     """
     # Ugly hack around <https://github.com/earwig/mwparserfromhell/issues/251>.
-    text = page.text.replace("<includeonly>safesubst:</includeonly>", "")
+    text = page.text().replace("<includeonly>safesubst:</includeonly>", "")
     parsed = mwph.parse(text)
     template = parsed.filter_templates()[1]
     year, month, day = (template.get(s).value.strip()
@@ -187,6 +169,23 @@ def _is_correct_anchor(tag: Tag, target: str) -> bool:
 
 def _compress_ws(text: str) -> str:
     return " ".join(text.split())
+
+
+def check_rfd(page: Page) -> bool | FiledCheck:
+    """Check if a page is subject to an ongoing RfD.
+
+    First checks for the {{subst:rfd}} tag, then for whether there's an
+    entry at the corresponding RfD log page.
+
+    Arg:
+      page:  A Page corresponding to a wikipage to be checked.
+
+    Returns:
+      A bool, True if both TAGGED matches and checkfiled() returns True.
+      (If the former but not the latter, the distinction is made clear
+      by logs.)
+    """
+    return _check_regexes(page) and _check_filed(page)
 
 
 def cleanup(unreviewed_titles: list[str]) -> None:

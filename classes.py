@@ -3,7 +3,7 @@ from enum import IntEnum
 import urllib.parse
 from typing import Any, Optional, SupportsIndex, TypeVar, TypedDict
 
-from pywikibot import Page
+from mwclient.page import Page  # type:ignore[import-untyped]
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -69,9 +69,9 @@ class Namespace(IntEnum):
     CATEGORY = 14
     PORTAL = 100
     DRAFT = 118
+    MOS = 126
     TIMEDTEXT = 710, 'TimedText'
-    GADGET = 2300
-    GADGET_DEFINITION = 2302, 'Gadget definition'
+    MODULE = 828
     SPECIAL = -1
     MEDIA = -2
 
@@ -87,10 +87,10 @@ class Title(str):
     """
     @staticmethod
     def from_page(page: Page) -> 'Title':
-        """Create a Title based on a pywikibot.Page.
+        """Create a Title based on a mwclient.Page.
 
         Args:
-          page:  A pywikibot.Page.
+          page:  A mwclient.Page.
 
         Returns:
           A Title drawn from the page's title and namespace ID.

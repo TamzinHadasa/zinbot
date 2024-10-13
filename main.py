@@ -3,10 +3,13 @@ __author__ = "Tamzin Hadasa Kelly"
 __copyright__ = "Copyright 2021-2024, Tamzin Hadasa Kelly"
 __license__ = "The MIT License"
 __email__ = "coding@tamz.in"
-__version__ = "1.5.0-bugfix-0"
 
-import api
+import datetime as dt
+
+import constants
 import pagetriage.newpages
+
+__version__ = constants.VERSION
 
 
 def run() -> None:
@@ -16,6 +19,6 @@ def run() -> None:
 
 if __name__ == "__main__":
     print(f"RUNNING (version {__version__})")
-    print(f"{api.site_time()}: Starting run.")
+    print(f"{dt.datetime.now()}: Starting run.")
     run()
-    print(f"{api.site_time()}: Run done.")
+    print(f"{dt.datetime.now()}: Run done.")
