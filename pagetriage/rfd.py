@@ -1,4 +1,4 @@
-"""Functions for detecting and patrolling RfD'd pages.
+"""Detecting and patrolling RfD'd pages.
 
 When a redirect is nominated for discussion at RfD, it is placed in the
 articles queue of Special:NewPagesFeed.  This module identifies such

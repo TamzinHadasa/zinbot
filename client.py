@@ -1,4 +1,4 @@
-"""Functions for interacting with the MW API, including through PWB."""
+"""Wraps mwclient in interacting with the MW API."""
 # NOTE: If the bot's framework winds up taking up more files than the
 # current 3 (this, `auth`, and `config`), it should probably be moved to
 # a `framework` subpackage.
