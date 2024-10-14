@@ -26,8 +26,7 @@ class _Messages(Enum):
     RFD1 = "[[{page}]] not filed to [[{rfd}]]."
     RFD2 = ("[[{page}]] filed to [[{rfd}]], but that log page has "
             "not been transcluded to main RfD page.")
-    RFD3 = "{{{{Rfd-NPF}}}}, not currently supported."
-
+    # RFD3 removed
 
 def _get_rfd_date_params_if_any(page: Page) -> Optional[dict[Literal['year', 'month', 'day'], str]]:
     """Return date params from RfD tag, if either has been called.
