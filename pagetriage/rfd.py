@@ -1,10 +1,9 @@
 """Functions for detecting and patrolling RfD'd pages.
 
 When a redirect is nominated for discussion at RfD, it is placed in the
-articles queue of Special:NewPagesFeed.  These functions identify such
-"articles", double-check that they've been filed to RfD, and, if so,
-patrol them.  After 30 minutes of not being filed to RfD, a page is
-logged as such on-wiki.
+articles queue of Special:NewPagesFeed.  This module identifies such
+"articles", double-checks that they've been filed to RfD, and, if so,
+patrols them, otherwise logging the error on-wiki.
 """
 from enum import Enum
 from typing import Literal, Optional
