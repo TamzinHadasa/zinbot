@@ -6,7 +6,6 @@ articles queue of Special:NewPagesFeed.  These functions identify such
 patrol them.  After 30 minutes of not being filed to RfD, a page is
 logged as such on-wiki.
 """
-import datetime as dt
 from enum import Enum
 import re
 from typing import Literal, Union
@@ -18,7 +17,6 @@ from mwparserfromhell.nodes import Heading, Tag  # type:ignore[import-untyped]
 import client
 from client import PageNotFoundError
 from classes import Namespace, SensitiveList, Title
-import logging_
 from logging_ import OnWikiLogger
 
 FiledCheck = Union[Literal[False], list[Tag]]
@@ -119,8 +117,7 @@ def _check_filed(page: Page) -> FiledCheck:
 
     if not filed:
         print(f"RfD not filed for {page_title}.")
-        if dt.datetime.now() - page.editTime() > dt.timedelta(minutes=30):
-            _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
+        _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
     elif "Wikipedia:Redirects for discussion" not in transcluders:
         print(f"{rfd_title} not transcluded to main RfD page.")
         _onwiki_logger.log(_Messages.RFD2, page_title, rfd=rfd_title)
