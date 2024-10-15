@@ -50,8 +50,9 @@ def get_page(title: str, ns: int = 0, must_exist: bool = False) -> Page:
     Raises:
       PageNotFoundError:  If `must_exist` but the page does not exist.
     """
-    page = Page(_site, name=f"{Namespace(ns)}:{title}")
-    if must_exist and not page.exists():
+    page = Page(_site,
+                name=f"{Namespace(ns).prefix}{title}".removeprefix(":"))
+    if must_exist and not page.exists:
         raise PageNotFoundError("Page does not exist")
     return page
 
@@ -88,9 +89,10 @@ def review(page: Page) -> None:
     Arg:
       page:  A Page representing a wikipage to review.
     """
-    _site.api({'action': 'pagetriageaction',
-               'pageid': page.pageid,
-               'reviewed': 1,
-               'skipnotif': True})
+    _site.api(action='pagetriageaction',
+              pageid=page.pageid,
+              reviewed=1,
+              skipnotif=True,
+              token=_site.get_token('csrf'))
     print(f"Reviewed {page.page_title}")
     logging_.log_local(page.page_title, "reviewedpages.txt")

@@ -95,7 +95,7 @@ class Title(str):
         Returns:
           A Title drawn from the page's title and namespace ID.
         """
-        return Title(Namespace(page.namespace().id), page.title())
+        return Title(Namespace(page.namespace), page.name)
 
     def __new__(cls, namespace: Namespace, pagename: str) -> 'Title':
         """Construct a Title.
