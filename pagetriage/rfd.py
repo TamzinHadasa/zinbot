@@ -116,7 +116,7 @@ def _check_filed(page: Page) -> FiledCheck:
             matches=lambda tag: _is_correct_anchor(tag, anchor)
         )
     )
-    transcluders = [i.title() for i in rfd.embeddedin()]
+    transcluders = [i.name for i in rfd.embeddedin()]
 
     if not filed:
         print(f"RfD not filed for {page_title}.")
