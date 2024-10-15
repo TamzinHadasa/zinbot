@@ -107,14 +107,3 @@ class OnWikiLogger:
                 'message': message.value.format(page=page, **formatters),
                 'timestamp': now.strftime(self._timestampformat)
             })
-
-
-def log_local(title: Title, logfile: str) -> None:
-    """Append a page's title and URL to a document in folder `logs/`.
-
-    Args:
-      title:  A str of a title that should be logged.
-      logfile:  A file (extant or not) in folder `logs/`.
-    """
-    with open(f"logs/{logfile}", 'a', encoding='utf-8') as f:
-        f.write(f"{title} <{constants.WIKI_URL}{title.as_url}>\n")

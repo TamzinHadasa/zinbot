@@ -100,7 +100,6 @@ def _check_filed(page: Page) -> FiledCheck:
                            must_exist=True)
     except PageNotFoundError:
         print(f"No RfD page for {page_title}.")
-        logging_.log_local(page_title, "no_rfd_logpage.txt")
         _onwiki_logger.log(_Messages.RFD0, page_title, rfd=rfd_title)
         return False
 
@@ -120,12 +119,10 @@ def _check_filed(page: Page) -> FiledCheck:
 
     if not filed:
         print(f"RfD not filed for {page_title}.")
-        logging_.log_local(page_title, "rfd_not_filed.txt")
         if dt.datetime.now() - page.editTime() > dt.timedelta(minutes=30):
             _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
     elif "Wikipedia:Redirects for discussion" not in transcluders:
         print(f"{rfd_title} not transcluded to main RfD page.")
-        logging_.log_local(page_title, "rfd_log_not_transcluded.txt")
         _onwiki_logger.log(_Messages.RFD2, page_title, rfd=rfd_title)
         return False
     return filed

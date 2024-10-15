@@ -95,4 +95,3 @@ def review(page: Page) -> None:
               skipnotif=True,
               token=_site.get_token('csrf'))
     print(f"Reviewed {page.page_title}")
-    logging_.log_local(page.page_title, "reviewedpages.txt")
