@@ -31,7 +31,7 @@ def checkqueue() -> None:
                 client.review(page)
                 unreviewed_titles.remove(page_title)
             else:
-                print(f"No match on {page_title=}")
+                print(f"No criteria met on {page_title=}")
         try:
             last: int = queue[-1]['creation_date']
         except KeyError as e:  # Unlikely to ever happen but...

@@ -1,9 +1,13 @@
 """Utility functions."""
-from enum import IntEnum
+import datetime as dt
+from enum import IntEnum, StrEnum
+import time
 import urllib.parse
 from typing import Any, Optional, SupportsIndex, TypeVar, TypedDict
 
 from mwclient.page import Page  # type:ignore[import-untyped]
+
+import client
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -20,6 +24,23 @@ class Event(TypedDict):
     code: str
     message: str
     timestamp: str
+
+# Alternate syntax because * is illegal as var name.
+RevisionRaw = TypedDict('RevisionRaw', {
+    'contentformat': str,
+    'contentmodel': str,
+    'comment': str,
+    'minor': Optional[str],
+    'timestamp': time.struct_time,
+    'user': str,
+    '*': str
+})
+
+
+class UserRaw(TypedDict):
+    userid: int
+    name: str
+    groups: list[str]
 
 
 class Namespace(IntEnum):
@@ -158,3 +179,30 @@ class SensitiveList(SensitivityMixin, list[T]):
     def __delitem__(self, v: SupportsIndex | slice) -> None:
         self._changed = True
         return super().__delitem__(v)
+
+
+class Group(StrEnum):
+    PATROLLER = 'patroller'
+    REVIEWER = 'reviewer'
+    ROLLBACKER = 'rollbacker'
+    SYSOP = 'sysop'
+    XCON = 'extendedconfirmed'
+
+
+class Revision:
+    def __init__(self, raw: RevisionRaw):
+        self.comment = raw['comment']
+        self.username = raw['user']
+        self.minor = bool(raw.get('minor'))
+        self.text = raw['*']
+        self.timestamp = dt.datetime.fromtimestamp(
+            time.mktime(raw['timestamp'])
+        )
+    
+    def user_info(self) -> 'User':
+        return client.get_user(self.username)
+
+
+class User:
+    def __init__(self, raw: UserRaw):
+        self.groups = set(Group(g) for g in raw['groups'])

@@ -78,8 +78,8 @@ def _check_filed(page: Page, year: str, month: str, day: str) -> bool:
         _onwiki_logger.log(_Messages.RFD0, page_title, rfd=rfd_title)
         return False
 
-    # What idiot made this line necessary by building quotation-mark escaping
-    # into {{rfd2}}?  Oh right.  Me.
+    # What idiot made this line necessary by building quotation-mark
+    # escaping into {{rfd2}}?  Oh right.  Me.
     anchor = page_title.replace('"', "&quot;").removeprefix(":")
     parsed = mwph.parse(rfd.text())
     filed: list[Tag] | list[Heading] = (

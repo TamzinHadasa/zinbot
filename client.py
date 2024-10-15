@@ -1,13 +1,10 @@
 """Wraps mwclient in interacting with the MW API."""
-# NOTE: If the bot's framework winds up taking up more files than the
-# current 3 (this, `auth`, and `config`), it should probably be moved to
-# a `framework` subpackage.
 from typing import Any, Literal
 
 from mwclient import Site  # type:ignore[import-untyped]
 from mwclient.page import Page  # type:ignore[import-untyped]
 
-from classes import ZBError, Namespace
+from classes import ZBError, Namespace, User
 import config
 import constants
 import logging_
@@ -55,6 +52,10 @@ def get_page(title: str, ns: int = 0, must_exist: bool = False) -> Page:
     if must_exist and not page.exists:
         raise PageNotFoundError("Page does not exist")
     return page
+
+
+def get_user(username: str) -> User:
+    return _site.users(users=username, prop='groups')
 
 
 def buildqueue(showdeleted: str = "", start: int = 1) -> Queue:
