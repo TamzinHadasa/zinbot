@@ -15,7 +15,6 @@ from mwparserfromhell.nodes import Heading, Tag  # type:ignore[import-untyped]
 import client
 from client import PageNotFoundError
 from classes import Namespace, SensitiveList, Title
-import logging_
 from logging_ import OnWikiLogger
 
 
@@ -96,8 +95,7 @@ def _check_filed(page: Page, year: str, month: str, day: str) -> bool:
 
     if not filed:
         print(f"RfD not filed for {page_title}.")
-        if dt.datetime.now() - page.editTime() > dt.timedelta(minutes=30):
-            _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
+        _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
     elif "Wikipedia:Redirects for discussion" not in transcluders:
         print(f"{rfd_title} not transcluded to main RfD page.")
         _onwiki_logger.log(_Messages.RFD2, page_title, rfd=rfd_title)
