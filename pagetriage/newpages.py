@@ -1,4 +1,4 @@
-"""Functions for interacting with the NewPagesFeed."""
+"""Interacting with the NewPagesFeed."""
 import client
 from classes import ZBError
 from pagetriage import rfd
@@ -17,7 +17,7 @@ def checkqueue() -> None:
       QueueError if an entry does not have a creation date.
     """
     unreviewed_titles = []
-    queue = client.buildqueue(['showdeleted'])
+    queue = client.buildqueue(showdeleted="y")
     # The practical limit on this is that, if there's some unforeseen
     # situation that can cause an infinite loop, the resulting HTTP 429
     # response would halt the bot as provided for in `api._request`.
@@ -40,7 +40,7 @@ def checkqueue() -> None:
         # it, since timestamps are non-unique.  Repeating is harmless,
         # as long as we account for the fact that `newqueue` will thus
         # always have a length of at least 1.
-        newqueue = client.buildqueue(['showdeleted'], start=last)
+        newqueue = client.buildqueue(showdeleted="y", start=last)
         # In theory would also cause a break if 200+ entries have the
         # same timestamp.  Yeah, that's fine.
         if not newqueue or queue[-1]['pageid'] == newqueue[-1]['pageid']:

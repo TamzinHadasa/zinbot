@@ -6,7 +6,6 @@ import json
 from typing import Any, Generator
 
 import client
-import constants
 from classes import Event, Namespace, SensitiveDict, SensitiveList, Title
 
 LoggerData = SensitiveDict[str, SensitiveList[Event]]
