@@ -45,7 +45,7 @@ def _get_rfd_date_params_if_any(page: Page) -> Optional[dict[Literal['year', 'mo
     text = page.text().replace("<includeonly>safesubst:</includeonly>", "")
     parsed = mwph.parse(text)
     for template in parsed.filter_templates():
-        if template in ("#invoke:RfD", "Rfd-NPF/core"):
+        if template.name in ("#invoke:RfD", "Rfd-NPF/core"):
             return {s: template.get(s).value.strip()  # type: ignore[misc]
                     for s in ("year", "month", "day")}
     return None
