@@ -54,13 +54,15 @@ def _get_rfd_date_params_if_any(page: Page) -> Optional[dict[Literal['year', 'mo
 def _check_filed(page: Page, year: str, month: str, day: str) -> bool:
     """Check an RfD log page for an anchor matching the page's title.
 
-    {{subst:rfd2}} makes such anchors automatically.  As with TAGGED, no
+    {{subst:rfd2}} makes such anchors automatically.  No
     guarantee of matching markup that renders the same way but is
     generated through some other means.
 
-    Arg:
-      page:  A Page corresponding to a wikipage tagged with
-        {{subst:rfd}}.
+    Args:
+      page:  A Page.
+      year:  A str of a 4-digit year.
+      month:  A str of a 2-digit month number.
+      day:  A str of a 2-digit day number.
 
     Returns:
       A bool indicating whether an RfD entry exists matching the page's
@@ -90,12 +92,12 @@ def _check_filed(page: Page, year: str, month: str, day: str) -> bool:
             matches=lambda tag: _is_correct_anchor(tag, anchor)
         )
     )
-    transcluders = [i.name for i in rfd.embeddedin()]
-
     if not filed:
         print(f"RfD not filed for {page_title}.")
         _onwiki_logger.log(_Messages.RFD1, page_title, rfd=rfd_title)
-    elif "Wikipedia:Redirects for discussion" not in transcluders:
+        return False
+    transcluders = [i.name for i in rfd.embeddedin()]
+    if "Wikipedia:Redirects for discussion" not in transcluders:
         print(f"{rfd_title} not transcluded to main RfD page.")
         _onwiki_logger.log(_Messages.RFD2, page_title, rfd=rfd_title)
         return False
